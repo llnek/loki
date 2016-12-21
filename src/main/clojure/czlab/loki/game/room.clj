@@ -42,7 +42,7 @@
             Room
             Player
             Session
-            GameEngine]
+            Engine]
            [czlab.loki.event
             Events
             EventSub
@@ -288,7 +288,7 @@
         (reset! sessions (ordered-map)))
 
       (activate [this]
-        (let [^GameEngine eng (.engine this)
+        (let [^Engine eng (.engine this)
               sss (vals @sessions)]
           (log/debug "activating room %s" rid)
           (.setv impl :active true)
@@ -308,7 +308,7 @@
           (log/warn "room.sendmsg: unhandled event %s" msg)))
 
       (onMsg [this evt]
-        (let [^GameEngine eng (.engine this)]
+        (let [^Engine eng (.engine this)]
           (log/debug "room got an event %s" evt)
           (condp = (:type evt)
             Events/LOCAL (onLocalMsg this evt)

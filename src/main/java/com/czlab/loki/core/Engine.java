@@ -21,7 +21,7 @@ import java.util.Map;
 /**
  * @author kenl
  */
-public interface GameEngine extends Initable, Disposable {
+public interface Engine extends Initable, Disposable {
 
   //life cycle of engine
   //1. initialize

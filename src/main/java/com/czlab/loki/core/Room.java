@@ -40,7 +40,7 @@ public interface Room extends Identifiable, Sender, Receiver, Dispatchable, Clos
 
   /**
    */
-  public GameEngine engine();
+  public Engine engine();
 
   /**
    */
