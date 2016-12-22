@@ -16,16 +16,49 @@
 
   czlabtest.loki.test
 
-  (:use [clojure.test]))
+  (:require [clojure.java.io :as io]
+            [clojure.string :as cs])
+
+  (:use [czlab.loki.event.core]
+        [clojure.test])
+
+  (:import [io.netty.handler.codec.http.websocketx
+            WebSocketFrame
+            TextWebSocketFrame]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(def
+  ^:private
+  EVT_JSON
+  "{\"type\" : 100, \"code\": 200, \"body\": { \"a\" : 911 }}")
+(def ^:private EVT_BODY {:a 911})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (deftest czlabtestloki-test
 
-  (is (= 1 1))
+  (is (let [^TextWebSocketFrame
+            evt (encodeEvent {:type 100 :code 200 :body EVT_BODY})
+            s (.text evt)]
+        (and (.indexOf s "100") > 0
+             (.indexOf s "200"))))
+
+  (is (let [evt (decodeEvent EVT_JSON {:x 3})]
+        (and (== 100 (:type evt))
+             (== 200 (:code evt))
+             (== 911 (get-in evt [:body :a])))))
+
+  (is (let [evt (reifyEvent 100 200 EVT_BODY {:x 7})]
+        (and (== 100 (:type evt))
+             (== 200 (:code evt))
+             (map? (:body evt))
+             (== 7 (:x evt)))))
+
+
+
 
   (is (string? "That's all folks!")))
-
 
 ;;(clojure.test/run-tests 'czlabtest.loki.czlabtestloki-test)
 

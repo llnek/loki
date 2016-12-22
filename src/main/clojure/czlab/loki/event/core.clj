@@ -35,7 +35,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn encodeEvent
-  "Turn data into websocket frames"
+  "Turn data into a websocket frame"
   ^WebSocketFrame
   [{:keys [type code body]}]
    {:pre [(number? type)]}
@@ -55,8 +55,7 @@
   ([data] (decodeEvent data nil))
   ([data extraBits]
    (log/debug "decoding json: %s" data)
-   (try!!
-     {:type 0}
+   (try!
      (let [evt (readJsonStrKW data)]
        (when-not (number? (:type evt))
          (trap! EventError
@@ -68,52 +67,21 @@
 (defn reifyEvent
   ""
   {:tag APersistentMap}
-  ([eventType ecode body ctx]
-   {:pre [(number? eventType)]}
-   (let [base {:timestamp (now<>)
-               :type (int eventType)
-               :body (or body nil)
-               :context (or ctx nil)
-               :code (or ecode 0)}] base))
+
+  ([eventType ecode body arg]
+   {:pre [(number? eventType)
+          (or (nil? body)
+              (map? body))]}
+   (merge {:timestamp (now<>)
+           :type eventType
+           :body (or body nil)
+           :code (or ecode 0)} arg))
 
   ([eventType ecode body]
    (reifyEvent eventType ecode body nil))
 
   ([eventType ecode]
    (reifyEvent eventType ecode nil nil)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn reifyGlobalEvent
-  "Make a Global Event"
-  {:tag APersistentMap}
-
-  ([ecode body]
-   (reifyGlobalEvent ecode body true))
-
-  ([ecode body reliable?]
-   (-> (reifyEvent Events/GLOBAL ecode body)
-       (assoc :reliable (true? reliable?)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn reifyLocalEvent
-  "Make a Local Event"
-  ^APersistentMap
-  [ecode body]
-  (reifyEvent Events/LOCAL ecode body))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn reifyUnitEvent
-  "Make a Unit Event"
-  {:tag APersistentMap}
-
-  ([ecode body]
-   (reifyUnitEvent ecode body nil))
-
-  ([ecode body ctx]
-   (reifyEvent Events/UNIT ecode body ctx)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
