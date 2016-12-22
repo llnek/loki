@@ -365,7 +365,7 @@
               :pnum (.number pss)}
          evt (reifyUnitEvent Events/PLAYREQ_OK src)]
         (.bind pss arg)
-        (setAKey ch PLAY_SESSION pss)
+        (setAKey ch PSSN pss)
         (log/debug "replying back to user: %s" evt)
         (.writeAndFlush ch (encodeEvent evt))
         (->> (reifyLocalEvent Events/PLAYER_JOINED
@@ -394,7 +394,7 @@
                  :pnum (.number pss)}
             evt (reifyUnitEvent Events/JOINREQ_OK src)]
         (.bind pss arg)
-        (setAKey ch PLAY_SESSION pss)
+        (setAKey ch PSSN pss)
         (.writeAndFlush ch (encodeEvent evt))
         (log/debug "replying back to user: %s" evt)
         (when-not (.isActive room)

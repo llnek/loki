@@ -51,7 +51,7 @@
   (let [impl (muble<> {:status Events/S_NOT_CONNECTED
                        :shutting-down false})
         created (now<>)
-        sid (generateUID Session)]
+        sid (str "session#" (seqint2))]
     (reify Session
 
       (parent [_] (.getv impl :parent))

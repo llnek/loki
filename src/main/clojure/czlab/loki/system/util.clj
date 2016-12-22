@@ -20,72 +20,15 @@
   (:require [czlab.xlib.logging :as log])
 
   (:use [czlab.convoy.netty.core]
-        [czlab.loki.event.core]
         [czlab.xlib.core]
         [czlab.xlib.str])
 
-  (:import [io.netty.util AttributeKey ReferenceCountUtil]
-           [io.netty.handler.codec.http.websocketx
-            TextWebSocketFrame
-            CloseWebSocketFrame]
-           [czlab.loki.core
-            Game
-            Room
-            Player
-            Session]
-           [io.netty.channel
-            Channel
-            ChannelHandler
-            ChannelHandlerContext]
-           [czlab.wabbit.server Container]
-           [czlab.convoy.netty InboundAdapter]
-           [czlab.loki.event EventError Events]))
+  (:import [io.netty.util AttributeKey]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defonce ^AttributeKey PLAY_SESSION (akey<> "play-session"))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defonce ^:private loki-HANDLER
-  (proxy [InboundAdapter][]
-    (channelRead [ctx msg]
-      (let
-        [^ChannelHandlerContext ctx ctx
-         ch (.channel ctx)
-         ^Session
-         ps (getAKey ctx PLAY_SESSION)
-         msg
-         (condp instance? msg
-           TextWebSocketFrame
-           (do
-             (->> (-> ^TextWebSocketFrame msg
-                      (.text)
-                      (decodeEvent {:context ps}))
-                  (.onMsg (.room ps)))
-             msg)
-           ;;else
-           (do->nil
-            (log/debug "got a non-frame msg: %s" msg)
-            (.fireChannelRead ctx msg)))]
-        (some-> msg
-                (ReferenceCountUtil/release msg))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn lokiHandler "" [] loki-HANDLER)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn generateUID
-  ""
-  ^String
-  [^Class cz]
-  (let [id (juid)]
-    (if (nil? cz)
-      id
-      (str (.getSimpleName cz) "-" id))))
+(defonce ^AttributeKey PSSN (akey<> "play-session"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

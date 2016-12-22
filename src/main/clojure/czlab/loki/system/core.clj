@@ -20,18 +20,20 @@
   (:require [czlab.xlib.logging :as log]
             [clojure.java.io :as io])
 
-  (:use [czlab.flux.wflow.core]
+  (:use [czlab.convoy.netty.core]
+        [czlab.flux.wflow.core]
         [czlab.xlib.format]
         [czlab.xlib.core]
         [czlab.xlib.io]
         [czlab.xlib.str]
+        [czlab.loki.system.util]
         [czlab.loki.event.core]
         [czlab.loki.game.msgreq])
 
-  (:import [io.netty.handler.codec.http.websocketx TextWebSocketFrame]
-           [czlab.flux.wflow WorkStream Job]
+  (:import [czlab.flux.wflow WorkStream Job]
            [czlab.wabbit.io WSockEvent]
            [czlab.loki.event Events]
+           [czlab.loki.core Session]
            [czlab.xlib XData]
            [java.io File]
            [io.netty.channel Channel]
@@ -42,44 +44,51 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- lokiOnEvent
-  ""
-  [^WSockEvent ws]
+(defn lokiOnEvent
+  "Handle job directly"
+  [^Job job]
 
-  (let [req (->> {:socket (.socket ws)
-                  :source (.source ws)}
-                 (decodeEvent (.. ws
-                                  body
-                                  stringify)))]
-    (condp = (:type req)
-
-      Events/PLAYGAME_REQ
+  (let [^WSockEvent ws (.event job)
+        ^Channel ch (.socket ws)
+        {:keys [type code] :as req}
+        (->> {:socket ch
+              :source (.source ws)}
+             (decodeEvent (.. ws
+                              body stringify)))]
+    (cond
+      (and (== type Events/UNIT)
+           (== code Events/PLAYGAME_REQ))
       (doPlayReq req)
 
-      Events/JOINGAME_REQ
+      (and (== type Events/UNIT)
+           (== code Events/JOINGAME_REQ))
       (doJoinReq req)
 
-      (log/warn "unhandled event! %s" req))))
+      :else
+      (if-some [^Session ss (getAKey ch PSSN)]
+        (->> (assoc req :context ss)
+             (.onMsg (.room ss)))
+        (log/error "no session attached to socket")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn lokiInit
-  "One time init from the MainApp"
-  [^Container ctr]
-  ;;TODO: loading in loki config file. do something with it?
-  (let [{:keys [loki]}
-        (.podConfig ctr)]
-    (log/info "loki config= %s" loki)))
+  "Initialize loki"
+  ([] (lokiInit nil))
+  ([arg]
+   {:pre [(or (nil? arg)
+              (map? arg))]}
+   (log/info "loki config= %s" arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn lokiHandler
-  ""
+  "Wrap handler as a workflow"
   ^WorkStream
   []
   (workStream<>
     (script<>
-      #(lokiOnEvent (.event ^Job %2)))))
+      #(lokiOnEvent %2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
