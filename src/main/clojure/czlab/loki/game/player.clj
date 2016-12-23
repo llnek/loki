@@ -39,10 +39,22 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn reifyPlayer
+(defn removePlayer
+  ""
+  ^Player
+  [^String user]
+  (when-some [m (@PLAYER-DB user)]
+    (swap! PLAYER-DB dissoc user)
+    (doseq [[_ v] (:s m)] (closeQ v))
+    (:p m)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn- player<>
   ""
   ^Player
   [^String user ^String pwd]
+  {:pre [(hgl? user)]}
   (let [impl (muble<>)]
     (reify
 
@@ -79,22 +91,7 @@
                             assoc (.id ps) ps))))
 
       (logout [_]
-        (when-some [m (@PLAYER-DB user)]
-          (doseq [pss (vals (:s m))]
-            (closeQ pss))
-          (swap! PLAYER-DB dissoc user))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn removePlayer
-  ""
-  ^Player
-  [^String user]
-  (when-some [m (@PLAYER-DB user)]
-    (swap! PLAYER-DB dissoc user)
-    (doseq [[_ v] (:s m)]
-      (closeQ v))
-    (:p m)))
+        (removePlayer user)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -104,7 +101,7 @@
   [^String user ^String pwd]
   (if-some [m (@PLAYER-DB user)]
     (:p m)
-    (let [p2 (reifyPlayer user pwd)]
+    (let [p2 (player<> user pwd)]
       (swap! PLAYER-DB
              assoc user {:p p2 :s {}})
       p2)))

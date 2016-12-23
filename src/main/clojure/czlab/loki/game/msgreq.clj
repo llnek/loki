@@ -28,8 +28,7 @@
         [czlab.loki.game.room]
         [czlab.loki.game.player])
 
-  (:import [io.netty.handler.codec.http.websocketx TextWebSocketFrame]
-           [czlab.wabbit.io IoService WSockEvent]
+  (:import [czlab.wabbit.io IoService WSockEvent]
            [czlab.xlib Muble I18N XData]
            [io.netty.channel Channel]
            [czlab.loki.event Events]
@@ -42,17 +41,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn- rError
-  "Reply back an error"
-  [^Channel ch error msg]
-  (log/debug "replying back an error code: %s" error)
-  (do->nil
-    (->> (reifyUnitEvent error {:message (str msg)})
-         (encodeEvent)
-         (.writeAndFlush ch))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -76,25 +64,24 @@
         (cond
           (nil? g)
           (do->nil
-            (rError socket
-                    Events/GAME_NOK
-                    (rstr rcb "game.notok")))
+            (replyError socket
+                        Events/GAME_NOK
+                        (rstr rcb "game.notok")))
           (nil? p)
           (do->nil
-            (rError socket
-                    Events/USER_NOK
-                    (rstr rcb "login.error")))
+            (replyError socket
+                        Events/USER_NOK
+                        (rstr rcb "login.error")))
           (nil? r)
           (do->nil
-            (rError socket
-                    Events/ROOMS_FULL
-                    (rstr rcb "room.none")))
-          :else
-          ps))
+            (replyError socket
+                        Events/ROOMS_FULL
+                        (rstr rcb "room.none")))
+          :else ps))
       (do->nil
-        (rError socket
-                Events/PLAYREQ_NOK
-                (rstr rcb "bad.req"))))))
+        (replyError socket
+                    Events/PLAYREQ_NOK
+                    (rstr rcb "bad.req"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Request to join a specific game room.  Not used now.
@@ -116,26 +103,26 @@
         (cond
           (nil? p)
           (do->nil
-            (rError socket
-                    Events/USER_NOK
-                    (rstr rcb "login.error")))
+            (replyError socket
+                        Events/USER_NOK
+                        (rstr rcb "login.error")))
           (nil? r)
           (do->nil
-            (rError socket
-                    Events/ROOM_NOK
-                    (rstr rcb "room.bad")))
+            (replyError socket
+                        Events/ROOM_NOK
+                        (rstr rcb "room.bad")))
           :else
           (let
             [pss (joinRoom r p evt)]
             (if (nil? pss)
-              (rError socket
-                      Events/ROOM_FILLED
-                      (rstr rcb "room.full")))
+              (replyError socket
+                          Events/ROOM_FILLED
+                          (rstr rcb "room.full")))
             pss)))
       (do->nil
-        (rError socket
-                Events/JOINREQ_NOK
-                (rstr rcb "bad.req"))))))
+        (replyError socket
+                    Events/JOINREQ_NOK
+                    (rstr rcb "bad.req"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

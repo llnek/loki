@@ -26,6 +26,7 @@
   (:import [io.netty.handler.codec.http.websocketx
             WebSocketFrame
             TextWebSocketFrame]
+           [io.netty.channel Channel]
            [clojure.lang APersistentMap]
            [czlab.loki.event Events EventError]))
 
@@ -34,17 +35,26 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+(defn encodeEventAsJson
+  "Turn data into a json string"
+  ^String
+  [{:keys [type code body] :as evt}]
+  {:pre [(number? type)]}
+  (-> {:body (or body nil)
+       :type type
+       :code (or code 0)
+       :timestamp (now<>)}
+      writeJsonStr))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 (defn encodeEvent
   "Turn data into a websocket frame"
   ^WebSocketFrame
-  [{:keys [type code body]}]
-   {:pre [(number? type)]}
-   (->> {:body (or body nil)
-         :type type
-         :code (or code 0)
-         :timestamp (now<>)}
-        writeJsonStr
-        (TextWebSocketFrame. )))
+  [evt]
+  {:pre [(map? evt)]}
+  (->> (encodeEventAsJson evt)
+       (TextWebSocketFrame. )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -64,24 +74,57 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn reifyEvent
+(defn errorObj<>
   ""
   {:tag APersistentMap}
 
-  ([eventType ecode body arg]
-   {:pre [(number? eventType)
+  ([etype ecode body arg]
+   {:pre [(number? etype)
+          (number? ecode)]}
+   (let [body (if (string? body) {:message body} body)]
+     (merge {:timestamp (now<>)
+             :status Events/ERROR
+             :type etype
+             :error (assoc body :code ecode)} arg)))
+
+  ([etype ecode body]
+   (errorObj<> etype ecode body nil))
+
+  ([etype ecode]
+   (errorObj<> etype ecode nil nil)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn eventObj<>
+  ""
+  {:tag APersistentMap}
+
+  ([etype ecode body arg]
+   {:pre [(number? etype)
+          (number? ecode)
           (or (nil? body)
               (map? body))]}
    (merge {:timestamp (now<>)
-           :type eventType
-           :body (or body nil)
-           :code (or ecode 0)} arg))
+           :type etype
+           :status Events/OK
+           :body (assoc body :code ecode)} arg))
 
-  ([eventType ecode body]
-   (reifyEvent eventType ecode body nil))
+  ([etype ecode body]
+   (eventObj<> etype ecode body nil))
 
-  ([eventType ecode]
-   (reifyEvent eventType ecode nil nil)))
+  ([etype ecode]
+   (eventObj<> etype ecode nil nil)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn replyError
+  "Reply back an error"
+  [^Channel ch error msg]
+  (log/debug "reply back an error code: %d" error)
+  (do->nil
+    (->> (errorObj<> Events/UNIT error msg)
+         (encodeEvent)
+         (.writeAndFlush ch))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

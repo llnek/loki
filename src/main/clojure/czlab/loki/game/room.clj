@@ -31,8 +31,7 @@
         [czlab.loki.event.disp]
         [czlab.loki.game.session])
 
-  (:import [io.netty.handler.codec.http.websocketx TextWebSocketFrame]
-           [czlab.wabbit.server Cljshim Container]
+  (:import [czlab.wabbit.server Cljshim Container]
            [czlab.wabbit.io IoService]
            [io.netty.channel Channel]
            [czlab.xlib Dispatchable]
@@ -128,7 +127,7 @@
   (let [rid (.id room)
         g (.game room)
         gid (.id g)
-        m (@FREE-ROOMS gid)]
+        m (get @FREE-ROOMS gid)]
     (log/debug "add a room(F): %s, game: %s" rid gid)
     (swap! FREE-ROOMS
            assoc
@@ -146,7 +145,7 @@
   (let [rid (.id room)
         g (.game room)
         gid (.id g)
-        m (@GAME-ROOMS gid)]
+        m (get @GAME-ROOMS gid)]
     (log/debug "add a room(A): %s, game: %s" rid gid)
     (swap! GAME-ROOMS
            assoc
@@ -155,39 +154,34 @@
     room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Returns a free room which is detached from the pending set.
-(defmulti lookupFreeRoom "" {:tag Room} (fn [a & args] (class a)))
+;;
+(defn- detachFreeRoom
+  ""
+  [gMap gameid roomid]
+  (log/debug "found a room(F): %s, game: %s" roomid gameid)
+  (swap! FREE-ROOMS
+         assoc
+         gameid
+         (dissoc gMap roomid)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defmethod lookupFreeRoom
-  Game
-  [^Game game]
-  (let [gid (.id game)
-        gm (@FREE-ROOMS gid)]
-    (when-some [r (first (vals gm))]
-      (let [rid (.id ^Room r)]
-        (log/debug "found a room(F): %s, game: %s" rid gid)
-        (swap! FREE-ROOMS
-               assoc
-               gid
-               (dissoc gm rid)))
-      r)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defmethod lookupFreeRoom
-  Keyword
-  [gameid roomid]
-  (let [gm (@FREE-ROOMS gameid)
-        r (get gm roomid)]
-    (when (some? r)
-      (log/debug "found a room(F): %s, game: %s" roomid gameid)
-      (swap! FREE-ROOMS
-             assoc
-             gameid
-             (dissoc gm roomid))
-      r)))
+(defn lookupFreeRoom
+  "Returns a free room which is detached from the pending set"
+  {:tag Room}
+  ([gameid roomid]
+   (let [gm (get @FREE-ROOMS gameid)
+         ^Room r (get gm roomid)]
+     (when (some? r)
+       (detachFreeRoom gm gameid (.id r))
+       r)))
+  ([game]
+   (let [gid (.id ^Game game)
+         gm (get @FREE-ROOMS gid)]
+    (when-some
+      [^Room r (first (vals gm))]
+      (detachFreeRoom gm gid (.id r))
+      r))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -200,17 +194,17 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- mkLocalSubr
+(defn- localSubr<>
   ""
   ^EventSub
   [^Session ps]
   (reify EventSub
-
     (eventType [_] Events/LOCAL)
     (session [_] ps)
-
-    Receiver
-    (onMsg [_ evt] (.sendMsg ps evt))))
+    (onMsg [me evt]
+      (if (== (.eventType me)
+              (:type evt))
+        (.sendMsg ps evt)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -230,7 +224,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- reifyPlayRoom
+(defn- room<>
   ""
   ^Room
   [^Game gameObj {:keys [source]}]
@@ -239,9 +233,9 @@
         crt (.cljrt ctr)
         engObj (.callEx crt (.engineClass gameObj)
                             (object-array [(atom {}) (ref {})]))
-        impl (muble<> {:shutting false})
+        impl (muble<> {:shutting? false})
         sessions (atom (ordered-map))
-        disp (reifyDispatcher)
+        disp (dispatcher<>)
         rid (uuid<>)
         created (now<>)]
     (reify Room
@@ -249,23 +243,21 @@
       (countPlayers [_] (count @sessions))
 
       (disconnect [_ ps]
-        (let [^Session ps ps
-              py (.player ps)]
+        (let [py (.player ps)]
           (swap! sessions dissoc (.id ps))
           (.removeSession py ps)
           (.unsubscribeIfSession disp ps)))
 
-      (connect [this p]
-        (let [ps (reifyPlayerSession this p (seqint2))
-              ^Player py p
+      (connect [this py]
+        (let [ps (session<> this py (seqint2))
               src {:puid (.id py)
                    :pnum (.number ps)}]
           (swap! sessions assoc (.id ps) ps)
           (.addSession py ps)
           ps))
 
-      (isShuttingDown [_] (.getv impl :shutting))
-      (isActive [_] (true? (.getv impl :active)))
+      (isShuttingDown [_] (.getv impl :shutting?))
+      (isActive [_] (true? (.getv impl :active?)))
 
       (canActivate [this]
         (and (not (.isActive this))
@@ -288,12 +280,12 @@
         (reset! sessions (ordered-map)))
 
       (activate [this]
-        (let [^Engine eng (.engine this)
+        (let [eng (.engine this)
               sss (vals @sessions)]
           (log/debug "activating room %s" rid)
-          (.setv impl :active true)
+          (.setv impl :active? true)
           (doseq [s sss]
-            (.addHandler this (mkLocalSubr s)))
+            (.addHandler this (localSubr<> s)))
           (doto eng
             (.init  sss)
             (.ready  this))))
@@ -308,7 +300,7 @@
           (log/warn "room.sendmsg: unhandled event %s" msg)))
 
       (onMsg [this evt]
-        (let [^Engine eng (.engine this)]
+        (let [eng (.engine this)]
           (log/debug "room got an event %s" evt)
           (condp = (:type evt)
             Events/LOCAL (onLocalMsg this evt)
@@ -334,7 +326,7 @@
   ""
   ^Session
   [^Game game ^Player py options]
-  (let [room (reifyPlayRoom game options)]
+  (let [room (room<> game options)]
     (log/debug "created a new play room: %s" (.id room))
     (.connect room py)))
 
@@ -353,28 +345,28 @@
         ^Room
         room (some-> pss (.room))]
     (when (some? room)
-      (if (.canActivate room)
-        (do
-          (log/debug "room has enough players, turning active")
-          (addGameRoom room))
-        (addFreeRoom room))
       (let
         [^Channel ch (:socket arg)
          src {:room (.id room)
               :game (.id game)
               :pnum (.number pss)}
-         evt (reifyUnitEvent Events/PLAYREQ_OK src)]
+         evt (eventObj<> Events/UNIT Events/PLAYREQ_OK src)]
         (.bind pss arg)
         (setAKey ch PSSN pss)
         (log/debug "replying back to user: %s" evt)
         (.writeAndFlush ch (encodeEvent evt))
-        (->> (reifyLocalEvent Events/PLAYER_JOINED
-                           {:pnum (.number pss)
-                            :puid (.id plyr)})
+        (->> (eventObj<> Events/LOCAL
+                         Events/PLAYER_JOINED
+                         {:pnum (.number pss)
+                          :puid (.id plyr)})
              (.broadcast room))
-        (when (.canActivate room)
-          (log/debug "room.canActivate = true")
-          (.activate room))))
+        (if (.canActivate room)
+          (do
+            (log/debug "room has enough players, can activate")
+            (addGameRoom room)
+            (log/debug "room.canActivate = true")
+            (.activate room))
+          (addFreeRoom room))))
     pss))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -386,13 +378,14 @@
   {:pre [(some? room)(some? plyr)]}
   (let [^Channel ch (:socket arg)
         game (.game room)]
-    (when (<= (.countPlayers room)
-              (.maxPlayers game))
+    (when (< (.countPlayers room)
+             (.maxPlayers game))
       (let [pss (.connect room plyr)
             src {:room (.id room)
                  :game (.id game)
                  :pnum (.number pss)}
-            evt (reifyUnitEvent Events/JOINREQ_OK src)]
+            evt (eventObj<> Events/UNIT
+                            Events/JOINREQ_OK src)]
         (.bind pss arg)
         (setAKey ch PSSN pss)
         (.writeAndFlush ch (encodeEvent evt))
@@ -400,9 +393,10 @@
         (when-not (.isActive room)
           (if (.canActivate room)
             (do
+              (log/debug "room has enough players, can activate")
+              (addGameRoom room)
               (log/debug "room.canActivate = true")
-              (.activate room)
-              (addGameRoom room))
+              (.activate room))
             (addFreeRoom room)))
         pss))))
 

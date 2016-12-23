@@ -24,41 +24,48 @@ public interface Events {
   public static final long LOCAL         = 2L;
   public static final long UNIT          = 3L;
 
-  // msg code
-  public static final long PLAYREQ_NOK        = 100L;
-  public static final long JOINREQ_NOK        = 101L;
-  public static final long USER_NOK           = 102L;
-  public static final long GAME_NOK           = 103L;
-  public static final long ROOM_NOK           = 104L;
-  public static final long ROOM_FILLED        = 105L;
-  public static final long ROOMS_FULL         = 106L;
+  // Reply codes
+  public static final long OK         = 200L;
+  public static final long ERROR      = 500L;
 
-  public static final long PLAYREQ_OK         = 200L;
-  public static final long JOINREQ_OK         = 201L;
-
-  public static final long PLAYER_JOINED      = 300L;
-  public static final long STARTED            = 301L;
-  public static final long CONNECTED          = 302L;
-  public static final long ERROR              = 303L;
-  public static final long CLOSED             = 304L;
-
-  public static final long AWAIT_START        = 400L;
-  public static final long SYNC_ARENA         = 405L;
-  public static final long POKE_RUMBLE        = 406L;
-
-  public static final long RESTART            = 500L;
-  public static final long START              = 501L;
-  public static final long STOP               = 502L;
-  public static final long POKE_MOVE          = 503L;
-  public static final long POKE_WAIT          = 504L;
-  public static final long PLAY_MOVE          = 505L;
-  public static final long REPLAY             = 506L;
-
-  // request types
+  // request codes
   public static final long PLAYGAME_REQ       = 600L;
-  public static final long JOINGAME_REQ       = 601L;
+  public static final long PLAYREQ_OK         = 601L;
+  public static final long PLAYREQ_NOK        = 602L;
 
-  public static final long QUIT_GAME          = 700L;
+  public static final long JOINGAME_REQ       = 651L;
+  public static final long JOINREQ_OK         = 652L;
+  public static final long JOINREQ_NOK        = 653L;
+
+  // user and room codes
+  public static final long USER_NOK           = 700L;
+  public static final long GAME_NOK           = 701L;
+  public static final long ROOM_NOK           = 702L;
+  public static final long ROOM_FILLED        = 703L;
+  public static final long ROOMS_FULL         = 704L;
+
+  // msg codes
+  public static final long PLAYER_JOINED      = 800L;
+  public static final long AWAIT_START        = 801L;
+
+  public static final long CONNECTED          = 820L;
+  public static final long STARTED            = 821L;
+  public static final long CLOSED             = 822L;
+
+  public static final long RESTART            = 840L;
+  public static final long START              = 841L;
+  public static final long STOP               = 842L;
+
+  public static final long POKE_RUMBLE        = 860L;
+  public static final long POKE_MOVE          = 861L;
+  public static final long POKE_WAIT          = 862L;
+  public static final long SYNC_ARENA         = 863L;
+
+  public static final long REPLAY             = 880L;
+  public static final long PLAY_MOVE          = 881L;
+
+  // end game
+  public static final long QUIT          = 911L;
 
   // session status
   public static final long S_NOT_CONNECTED    = 0L;

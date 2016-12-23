@@ -27,8 +27,7 @@
         [czlab.loki.event.core]
         [czlab.loki.event.disp])
 
-  (:import [io.netty.handler.codec.http.websocketx TextWebSocketFrame]
-           [czlab.wabbit.server Container]
+  (:import [czlab.wabbit.server Container]
            [io.netty.channel Channel]
            [czlab.loki.core
             Game
@@ -44,12 +43,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn reifyPlayerSession
+(defn session<>
   ""
   ^Session
   [^Room room ^Player plyr pnumber]
   (let [impl (muble<> {:status Events/S_NOT_CONNECTED
-                       :shutting-down false})
+                       :shutting? false})
         created (now<>)
         sid (str "session#" (seqint2))]
     (reify Session
@@ -69,15 +68,15 @@
               (.sendMsg msg))))
 
       (onMsg [this evt]
-        (trap! Exception "Unexpected onmsg called in PlayerSession."))
+        (trap! Exception "Unexpected onmsg called in Session."))
         ;;(log/debug "player session " sid " , onmsg called: " evt))
 
-      (isConnected [this] (= Events/S_CONNECTED (.status this)))
+      (isConnected [this] (== Events/S_CONNECTED (.status this)))
 
-      (isShuttingDown [_] (.getv impl :shutting-down))
+      (isShuttingDown [_] (.getv impl :shutting?))
 
       (bind [this options]
-        (.setv impl :tcp (reifyReliableSender (:socket options)))
+        (.setv impl :tcp (tcpSender<> (:socket options)))
         (.setv impl :parent (:source options))
         (.setStatus this Events/S_CONNECTED))
 
@@ -88,10 +87,10 @@
 
       (close [this]
         (when (.isConnected this)
-          (.setv impl :shutting-down true)
+          (.setv impl :shutting? true)
           (closeQ (.getv impl :tcp))
           (.unsetv impl :tcp)
-          (.setv impl :shutting-down false)
+          (.setv impl :shutting? false)
           (.setv impl :status Events/S_NOT_CONNECTED)))
 
       Object

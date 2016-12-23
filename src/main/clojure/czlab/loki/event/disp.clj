@@ -42,21 +42,21 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn reifyReliableSender
+(defn tcpSender<>
   ""
   ^TCPSender
   [^Channel ch]
   (reify TCPSender
-    (sendMsg [_ evt] (.writeAndFlush ch
-                                     (encodeEvent evt)))
+    (sendMsg [_ evt]
+      (.writeAndFlush ch (encodeEvent evt)))
     (isReliable [_] true)
     (close [_]
-      (log/debug "about to close tcp connection %s" ch)
+      (log/debug "closing tcp: %s" ch)
       (closeQ ch))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn reifyDispatcher
+(defn dispatcher<>
   ""
   ^PubSub
   []
