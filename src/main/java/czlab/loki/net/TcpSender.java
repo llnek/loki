@@ -17,10 +17,8 @@ package czlab.loki.net;
 /**
  * @author Kenneth Leung
  */
-public interface UDPSender extends MsgSender {
+public interface TcpSender extends MsgSender {
 
-  default public boolean isReliable() { return false; }
+  default public boolean isReliable() { return true; }
 
 }
-
-

@@ -34,7 +34,7 @@
         [czlab.xlib.str])
 
   (:import [czlab.loki.event EventSub PubSub]
-           [czlab.loki.net TCPSender]
+           [czlab.loki.net TcpSender]
            [io.netty.channel Channel]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44,9 +44,9 @@
 ;;
 (defn tcpSender<>
   ""
-  ^TCPSender
+  ^TcpSender
   [^Channel ch]
-  (reify TCPSender
+  (reify TcpSender
     (send [_ evt]
       (.writeAndFlush ch (encodeEvent evt)))
     (isReliable [_] true)
