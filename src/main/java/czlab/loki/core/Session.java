@@ -14,18 +14,18 @@
 
 package czlab.loki.core;
 
-import czlab.loki.event.Receiver;
-import czlab.loki.event.Sender;
 import czlab.xlib.Identifiable;
 import czlab.xlib.Hierarchial;
+import czlab.xlib.Receivable;
+import czlab.xlib.Sendable;
 import java.io.Closeable;
 
 /**
  * @author Kenneth Leung
  */
 public interface Session extends Closeable
-                                 ,Sender
-                                 ,Receiver
+                                 ,Sendable
+                                 ,Receivable
                                  ,Hierarchial
                                  ,Identifiable {
 

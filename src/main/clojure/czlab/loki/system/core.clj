@@ -67,7 +67,7 @@
       :else
       (if-some [^Session ss (getAKey ch PSSN)]
         (->> (assoc req :context ss)
-             (.onMsg (.room ss)))
+             (.receive (.room ss)))
         (log/error "no session attached to socket")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

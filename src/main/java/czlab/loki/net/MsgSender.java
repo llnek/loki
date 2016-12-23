@@ -14,16 +14,13 @@
 
 package czlab.loki.net;
 
+import czlab.xlib.Sendable;
 import java.io.Closeable;
 
 /**
  * @author Kenneth Leung
  */
-public interface MsgSender extends Closeable {
-
-  /**
-   */
-  public Object sendMsg(Object msg);
+public interface MsgSender extends Sendable, Closeable {
 
   /**
    */

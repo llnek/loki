@@ -47,7 +47,7 @@
   ^TCPSender
   [^Channel ch]
   (reify TCPSender
-    (sendMsg [_ evt]
+    (send [_ evt]
       (.writeAndFlush ch (encodeEvent evt)))
     (isReliable [_] true)
     (close [_]
@@ -87,7 +87,7 @@
               (let [^EventSub ee cb]
                 (if (== (.eventType ee)
                         (:type msg))
-                  (.onMsg ee msg))
+                  (.receive ee msg))
                 (recur))))))
 
       (close [_]

@@ -35,8 +35,8 @@
             Player
             Session]
            [czlab.xlib Hierarchial]
-           [czlab.loki.net MsgSender]
-           [czlab.loki.event Events Sender Receiver]))
+           [czlab.loki.event Events]
+           [czlab.loki.net MsgSender]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -60,14 +60,14 @@
       (player [_] plyr)
       (room [_] room)
 
-      (sendMsg [this msg]
+      (send [this msg]
         (when (and (not (.isShuttingDown this))
                    (.isConnected this))
           (-> ^MsgSender
               (.getv impl :tcp)
-              (.sendMsg msg))))
+              (.send msg))))
 
-      (onMsg [this evt]
+      (receive [this evt]
         (trap! Exception "Unexpected onmsg called in Session."))
         ;;(log/debug "player session " sid " , onmsg called: " evt))
 

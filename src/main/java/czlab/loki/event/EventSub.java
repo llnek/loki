@@ -15,11 +15,12 @@
 package czlab.loki.event;
 
 import czlab.loki.core.Session;
+import czlab.xlib.Receivable;
 
 /**
  * @author Kenneth Leung
  */
-public interface EventSub extends Receiver {
+public interface EventSub extends Receivable {
 
   /**
    */

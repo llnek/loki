@@ -32,9 +32,9 @@
         [czlab.loki.game.session])
 
   (:import [czlab.wabbit.server Cljshim Container]
+           [czlab.xlib Sendable Dispatchable]
            [czlab.wabbit.io IoService]
            [io.netty.channel Channel]
-           [czlab.xlib Dispatchable]
            [clojure.lang Keyword]
            [czlab.loki.core
             Game
@@ -42,11 +42,7 @@
             Player
             Session
             Engine]
-           [czlab.loki.event
-            Events
-            EventSub
-            PubSub
-            Sender Receiver]))
+           [czlab.loki.event Events EventSub PubSub]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -201,10 +197,10 @@
   (reify EventSub
     (eventType [_] Events/LOCAL)
     (session [_] ps)
-    (onMsg [me evt]
+    (receive [me evt]
       (if (== (.eventType me)
               (:type evt))
-        (.sendMsg ps evt)))))
+        (.send ps evt)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -212,7 +208,7 @@
   ""
   [^Room room evt]
   (if-some [s (:context evt)]
-    (.sendMsg ^Sender s evt)))
+    (.send ^Sendable s evt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -293,13 +289,13 @@
       (removeHandler [_ h] (.unsubscribe disp h))
       (addHandler [_ h] (.subscribe disp h))
 
-      (sendMsg [this msg]
+      (send [this msg]
         (condp = (:type msg)
           Events/LOCAL (onLocalMsg this msg)
           Events/UNIT (onSessionMsg this msg)
           (log/warn "room.sendmsg: unhandled event %s" msg)))
 
-      (onMsg [this evt]
+      (receive [this evt]
         (let [eng (.engine this)]
           (log/debug "room got an event %s" evt)
           (condp = (:type evt)

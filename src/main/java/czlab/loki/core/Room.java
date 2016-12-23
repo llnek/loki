@@ -14,17 +14,20 @@
 
 package czlab.loki.core;
 
-import czlab.loki.event.Receiver;
-import czlab.loki.event.Sender;
 import czlab.xlib.Dispatchable;
 import czlab.xlib.Identifiable;
+import czlab.xlib.Receivable;
+import czlab.xlib.Sendable;
 import java.io.Closeable;
-
 
 /**
  * @author Kenneth Leung
  */
-public interface Room extends Identifiable, Sender, Receiver, Dispatchable, Closeable {
+public interface Room extends Identifiable
+                              , Sendable
+                              , Receivable
+                              , Dispatchable
+                              , Closeable {
 
   /**
    */
