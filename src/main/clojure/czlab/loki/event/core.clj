@@ -38,13 +38,21 @@
 (defn encodeEventAsJson
   "Turn data into a json string"
   ^String
-  [{:keys [type code body] :as evt}]
-  {:pre [(number? type)]}
-  (-> {:body (or body nil)
-       :type type
-       :code (or code 0)
-       :timestamp (now<>)}
-      writeJsonStr))
+  [{:keys [status type code] :as evt}]
+  {:pre [(number? status)
+         (number? type)(number? code)]}
+  (let [m {:status status
+           :type type
+           :code code
+           :timestamp (now<>)}]
+    (->
+      (cond
+        (== status Events/ERROR)
+        (assoc m :error (or (:error evt) {}))
+        (== status Events/OK)
+        (assoc m :body (or (:body evt) {}))
+        :else m)
+      writeJsonStr)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -85,7 +93,8 @@
      (merge {:timestamp (now<>)
              :status Events/ERROR
              :type etype
-             :error (assoc body :code ecode)} arg)))
+             :code ecode
+             :error (or body {})} arg)))
 
   ([etype ecode body]
    (errorObj<> etype ecode body nil))
@@ -105,9 +114,10 @@
           (or (nil? body)
               (map? body))]}
    (merge {:timestamp (now<>)
-           :type etype
            :status Events/OK
-           :body (assoc body :code ecode)} arg))
+           :type etype
+           :code ecode
+           :body (or body {})} arg))
 
   ([etype ecode body]
    (eventObj<> etype ecode body nil))
@@ -117,14 +127,25 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+(defn replyEvent
+  "Reply back a message"
+  [^Channel ch msg]
+  {:pre [(some? ch)(map? msg)]}
+  (log/debug (str "reply back a msg "
+                  "type: %d, code: %d")
+             (:type msg) (:code msg))
+  (do->nil
+    (->> (encodeEvent msg)
+         (.writeAndFlush ch))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 (defn replyError
   "Reply back an error"
   [^Channel ch error msg]
-  (log/debug "reply back an error code: %d" error)
-  (do->nil
-    (->> (errorObj<> Events/UNIT error msg)
-         (encodeEvent)
-         (.writeAndFlush ch))))
+  {:pre [(some? ch)(number? error)]}
+  (replyEvent ch
+              (errorObj<> Events/UNIT error msg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

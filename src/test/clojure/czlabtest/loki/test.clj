@@ -24,38 +24,56 @@
 
   (:import [io.netty.handler.codec.http.websocketx
             WebSocketFrame
-            TextWebSocketFrame]))
+            TextWebSocketFrame]
+           [czlab.loki.event Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (def
   ^:private
   EVT_JSON
-  "{\"type\" : 100, \"code\": 200, \"body\": { \"a\" : 911 }}")
+  "{\"type\" : 100, \"status\": 200, \"code\":111, \"body\": { \"a\" : 911 }}")
 (def ^:private EVT_BODY {:a 911})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (deftest czlabtestloki-test
 
-  (is (let [^TextWebSocketFrame
-            evt (encodeEvent {:type 100 :code 200 :body EVT_BODY})
-            s (.text evt)]
-        (and (.indexOf s "100") > 0
-             (.indexOf s "200"))))
-
-  (is (let [evt (decodeEvent EVT_JSON {:x 3})]
+  (is (let [evt (eventObj<> 100 111 EVT_BODY {:x 7})]
         (and (== 100 (:type evt))
-             (== 200 (:code evt))
-             (== 911 (get-in evt [:body :a])))))
-
-  (is (let [evt (reifyEvent 100 200 EVT_BODY {:x 7})]
-        (and (== 100 (:type evt))
-             (== 200 (:code evt))
+             (== Events/OK (:status evt))
+             (== 111 (:code evt))
              (map? (:body evt))
              (== 7 (:x evt)))))
 
+  (is (let [evt (errorObj<> 100 111 EVT_BODY {:x 7})]
+        (and (== 100 (:type evt))
+             (== Events/ERROR (:status evt))
+             (== 111 (:code evt))
+             (map? (:error evt))
+             (== 7 (:x evt)))))
 
+  (is (let [^TextWebSocketFrame
+            evt (-> (eventObj<> 100 111 EVT_BODY)
+                    (encodeEvent ))
+            s (.text evt)]
+        (and (> (.indexOf s "100") 0)
+             (> (.indexOf s "200") 0)
+             (> (.indexOf s "111") 0))))
+
+  (is (let [^TextWebSocketFrame
+            evt (-> (eventObj<> 100 111)
+                    (encodeEvent))
+            s (.text evt)]
+        (and (> (.indexOf s "100") 0)
+             (> (.indexOf s "200") 0)
+             (> (.indexOf s "111") 0))))
+
+  (is (let [evt (decodeEvent EVT_JSON {:x 3})]
+        (and (== 100 (:type evt))
+             (== 200 (:status evt))
+             (== 111 (:code evt))
+             (== 911 (get-in evt [:body :a])))))
 
 
   (is (string? "That's all folks!")))
