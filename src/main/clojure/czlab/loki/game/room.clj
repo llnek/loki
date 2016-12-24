@@ -42,7 +42,7 @@
             Player
             Session
             Engine]
-           [czlab.loki.event Events EventSub PubSub]))
+           [czlab.loki.event Events Subr PubSub]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -51,8 +51,8 @@
 ;;
 ;; {game-id -> map
 ;;             { room-id -> room }}
-(def ^:private FREE-ROOMS (atom {}))
-(def ^:private GAME-ROOMS (atom {}))
+(def ^:private free-rooms (atom (ordered-map)))
+(def ^:private game-rooms (atom (ordered-map)))
 (def ^:private vacancy 1000)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -61,11 +61,11 @@
   "Remove an active room"
   ^Room
   [gameid roomid]
-  (let [gm (@GAME-ROOMS gameid)
+  (let [gm (@game-rooms gameid)
         r (get gm roomid)]
     (when (some? r)
       (log/debug "remove room(A): %s, game: %s" roomid gameid)
-      (swap! GAME-ROOMS
+      (swap! game-rooms
              assoc
              gameid (dissoc gm roomid))
       r)))
@@ -76,10 +76,10 @@
   "Remove a waiting room"
   ^Room
   [gameid roomid]
-  (let [gm (@FREE-ROOMS gameid)
+  (let [gm (@free-rooms gameid)
         r (get gm roomid)]
     (log/debug "remove room(F): %s, game: %s" roomid gameid)
-    (swap! FREE-ROOMS
+    (swap! free-rooms
            assoc
            gameid (dissoc gm roomid))
     r))
@@ -95,12 +95,12 @@
   (let [rid (.id room)
         g (.game room)
         gid (.id g)
-        m (get @FREE-ROOMS gid)]
+        m (@free-rooms gid)]
     (log/debug "add a room(F): %s, game: %s" rid gid)
-    (swap! FREE-ROOMS
+    (swap! free-rooms
            assoc
            gid
-           (assoc m rid room))
+           (assoc (or m (ordered-map)) rid room))
     room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -113,12 +113,12 @@
   (let [rid (.id room)
         g (.game room)
         gid (.id g)
-        m (get @GAME-ROOMS gid)]
+        m (@game-rooms gid)]
     (log/debug "add a room(A): %s, game: %s" rid gid)
-    (swap! GAME-ROOMS
+    (swap! game-rooms
            assoc
            gid
-           (assoc m rid room))
+           (assoc (or m (ordered-map)) rid room))
     room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -127,7 +127,7 @@
   ""
   [gMap gameid roomid]
   (log/debug "found a room(F): %s, game: %s" roomid gameid)
-  (swap! FREE-ROOMS
+  (swap! free-rooms
          assoc
          gameid
          (dissoc gMap roomid)))
@@ -138,14 +138,14 @@
   "Returns a free room which is detached from the pending set"
   {:tag Room}
   ([gameid roomid]
-   (let [gm (get @FREE-ROOMS gameid)
+   (let [gm (@free-rooms gameid)
          ^Room r (get gm roomid)]
      (when (some? r)
        (detachFreeRoom gm gameid (.id r))
        r)))
   ([game]
    (let [gid (.id ^Game game)
-         gm (get @FREE-ROOMS gid)]
+         gm (@free-rooms gid)]
     (when-some
       [^Room r (first (vals gm))]
       (detachFreeRoom gm gid (.id r))
@@ -158,15 +158,15 @@
   ^Room
   [gameid roomid]
   (log/debug "looking for room: %s, game: %s" roomid gameid)
-  (get (@GAME-ROOMS gameid) roomid))
+  (get (@game-rooms gameid) roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- localSubr<>
   ""
-  ^EventSub
+  ^Subr
   [^Session ps]
-  (reify EventSub
+  (reify Subr
     (eventType [_] Events/LOCAL)
     (session [_] ps)
     (receive [me evt]
@@ -322,7 +322,7 @@
         (.bind pss arg)
         (setAKey ch PSSN pss)
         (log/debug "replying back to user: %s" evt)
-        (.writeAndFlush ch (encodeEvent evt))
+        (replyEvent ch evt)
         (->> (eventObj<> Events/LOCAL
                          Events/PLAYER_JOINED
                          {:pnum (.number pss)
@@ -356,7 +356,7 @@
                             Events/JOINREQ_OK src)]
         (.bind pss arg)
         (setAKey ch PSSN pss)
-        (.writeAndFlush ch (encodeEvent evt))
+        (replyEvent ch evt)
         (log/debug "replying back to user: %s" evt)
         (when-not (.isActive room)
           (if (.canActivate room)

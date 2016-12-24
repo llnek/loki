@@ -23,16 +23,18 @@
         [czlab.loki.game.core]
         [czlab.loki.game.player]
         [czlab.loki.game.room]
-        [czlab.loki.game.msgreq]
+        [czlab.loki.game.reqs]
         [czlab.loki.game.session]
         [czlab.xlib.format]
         [czlab.xlib.core]
         [czlab.xlib.str]
         [clojure.test])
 
-  (:import [io.netty.handler.codec.http.websocketx
+  (:import [czlab.wabbit.mock.test MockContainer MockIOService]
+           [io.netty.handler.codec.http.websocketx
             WebSocketFrame
             TextWebSocketFrame]
+           [czlab.loki.core Engine]
            [czlab.loki.event Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -61,10 +63,17 @@
       :enabled true
       :minp 2
       :maxp 2
-      :engine  "acme/Test"}
+      :engine  "czlabtest.loki.test/testEngine"}
     :status true
     :uri "/arena/test"
     :image "ui/catalog.png"}})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn testEngine
+  ""
+  ^Engine
+  [a b] nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -111,6 +120,41 @@
 
   (is (let [g (lookupGame "game-1")]
         (some? g)))
+
+  (is (let [c1 (lookupPlayer "u1" "p1")
+            c2 (lookupPlayer "u1")
+            c3 (removePlayer "u1")
+            c4 (lookupPlayer "u1")]
+        (and (some? c1)
+             (identical? c1 c2)
+             (some? c3)
+             (nil? c4))))
+
+  (is (let [c1 (lookupPlayer "u1" "p1")
+            _ (.setEmailId c1 "e")
+            _ (.setName c1 "n")
+            e (.emailId c1)
+            n (.name c1)
+            id (.id c1)
+            cs (.countSessions c1)
+            _ (.logout c1)
+            c4 (lookupPlayer "u1")]
+        (and (some? c1)
+             (= e "e")
+             (= n "n")
+             (== 0 cs)
+             (= id "u1")
+             (nil? c4))))
+
+  (is (let [s (doPlayReq {:source (MockIOService.)
+                          :body {:gameid "game-1"
+                                 :userid  "u1"
+                                 :password "p1"}})
+            r (some-> s (.room ))]
+        (and (some? r)
+             (not (.canActivate r)))))
+
+
 
   (is (string? "That's all folks!")))
 

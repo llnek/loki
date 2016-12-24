@@ -20,7 +20,7 @@ import czlab.xlib.Receivable;
 /**
  * @author Kenneth Leung
  */
-public interface EventSub extends Receivable {
+public interface Subr extends Receivable {
 
   /**
    */

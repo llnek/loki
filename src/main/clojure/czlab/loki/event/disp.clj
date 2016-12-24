@@ -33,7 +33,7 @@
         [czlab.xlib.io]
         [czlab.xlib.str])
 
-  (:import [czlab.loki.event EventSub PubSub]
+  (:import [czlab.loki.event Subr PubSub]
            [czlab.loki.net TcpSender]
            [io.netty.channel Channel]))
 
@@ -64,7 +64,7 @@
     (reify PubSub
 
       (unsubscribeIfSession [this s]
-        (doseq [[^EventSub cb _] @handlers
+        (doseq [[^Subr cb _] @handlers
                 :let [pss (.session cb)]
                 :when (identical? pss s)]
           (.unsubscribe this cb)))
@@ -84,7 +84,7 @@
           (swap! handlers assoc cb c)
           (cas/go-loop []
             (if-some [msg (cas/<! c)]
-              (let [^EventSub ee cb]
+              (let [^Subr ee cb]
                 (log/debug "pubsub: got msg for sub: %s" ee)
                 (if (== (.eventType ee)
                         (:type msg))

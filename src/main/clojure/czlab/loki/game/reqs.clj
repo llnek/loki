@@ -15,7 +15,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.game.msgreq
+  czlab.loki.game.reqs
 
   (:require [czlab.xlib.resources :refer [rstr]]
             [czlab.xlib.logging :as log])
@@ -49,7 +49,8 @@
   "source json = {:gameid, :userid, :password}"
   ^Session
   [{:keys [^IoService source socket body] :as evt}]
-  (let [rcb (I18N/bundle (.. source server id))
+  (let [rcb (if (some? source)
+              (I18N/bundle (.. source server id)))
         {:keys [gameid userid password]} body]
     (if (hgl? gameid)
       (let
@@ -92,7 +93,8 @@
   source json = {:gameid, :roomid, :userid, :password}"
   ^Session
   [{:keys [^IoService source socket body] :as evt}]
-  (let [rcb (I18N/bundle (.. source server id))
+  (let [rcb (if (some? source)
+              (I18N/bundle (.. source server id)))
         {:keys [gameid roomid userid password]} body]
     (if (and (hgl? gameid)
              (hgl? roomid))

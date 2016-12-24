@@ -124,20 +124,21 @@
 (defn replyEvent
   "Reply back a message"
   [^Channel ch msg]
-  {:pre [(some? ch)(map? msg)]}
+  ;;{:pre [(some? ch)(map? msg)]}
   (log/debug (str "reply back a msg "
                   "type: %d, code: %d")
              (:type msg) (:code msg))
   (do->nil
-    (->> (encodeEvent msg)
-         (.writeAndFlush ch))))
+    (if (some? ch)
+        (->> (encodeEvent msg)
+             (.writeAndFlush ch)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn replyError
   "Reply back an error"
   [^Channel ch error msg]
-  {:pre [(some? ch)(number? error)]}
+  ;;{:pre [(some? ch)(number? error)]}
   (replyEvent ch
               (errorObj<> Events/UNIT error msg)))
 

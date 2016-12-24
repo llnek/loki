@@ -29,11 +29,11 @@ public interface PubSub extends Closeable {
 
   /**
    */
-  public void unsubscribe(EventSub h);
+  public void unsubscribe(Subr h);
 
   /**
    */
-  public void subscribe(EventSub h);
+  public void subscribe(Subr h);
 
   /**
    */

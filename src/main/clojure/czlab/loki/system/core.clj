@@ -28,7 +28,7 @@
         [czlab.xlib.str]
         [czlab.loki.system.util]
         [czlab.loki.event.core]
-        [czlab.loki.game.msgreq])
+        [czlab.loki.game.reqs])
 
   (:import [czlab.flux.wflow WorkStream Job]
            [czlab.wabbit.io WSockEvent]

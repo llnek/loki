@@ -35,7 +35,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; player-db
 ;; {player-id -> {:p player :s {id -> session}}}
-(def ^:private PLAYER-DB (atom {}))
+(def ^:private player-db (atom {}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -43,8 +43,8 @@
   ""
   ^Player
   [^String user]
-  (when-some [m (@PLAYER-DB user)]
-    (swap! PLAYER-DB dissoc user)
+  (when-some [m (@player-db user)]
+    (swap! player-db dissoc user)
     (doseq [[_ v] (:s m)] (closeQ v))
     (:p m)))
 
@@ -68,8 +68,8 @@
       (id [_] user)
 
       (removeSession [_ ps]
-        (if-some [m (@PLAYER-DB user)]
-          (swap! PLAYER-DB
+        (if-some [m (@player-db user)]
+          (swap! player-db
                  assoc
                  user
                  (update-in m
@@ -77,13 +77,13 @@
                             dissoc (.id ps)))))
 
       (countSessions [_]
-        (if-some [m (@PLAYER-DB user)]
+        (if-some [m (@player-db user)]
           (int (count (:s m)))
           (int 0)))
 
       (addSession [_ ps]
-        (let [m (@PLAYER-DB user)]
-          (swap! PLAYER-DB
+        (let [m (@player-db user)]
+          (swap! player-db
                  assoc
                  user
                  (update-in m
@@ -99,10 +99,10 @@
   ""
   ^Player
   [^String user ^String pwd]
-  (if-some [m (@PLAYER-DB user)]
+  (if-some [m (@player-db user)]
     (:p m)
     (let [p2 (player<> user pwd)]
-      (swap! PLAYER-DB
+      (swap! player-db
              assoc user {:p p2 :s {}})
       p2)))
 
@@ -112,7 +112,7 @@
   ""
   {:tag Player}
   ([user pwd] (createPlayer user pwd))
-  ([user] (:p (@PLAYER-DB user))))
+  ([user] (:p (@player-db user))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
