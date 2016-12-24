@@ -38,21 +38,15 @@
 (defn encodeEventAsJson
   "Turn data into a json string"
   ^String
-  [{:keys [status type code] :as evt}]
+  [{:keys [timestamp status type code body] :as evt}]
   {:pre [(number? status)
          (number? type)(number? code)]}
   (let [m {:status status
            :type type
            :code code
-           :timestamp (now<>)}]
-    (->
-      (cond
-        (== status Events/ERROR)
-        (assoc m :error (or (:error evt) {}))
-        (== status Events/OK)
-        (assoc m :body (or (:body evt) {}))
-        :else m)
-      writeJsonStr)))
+           :body (or body {})
+           :timestamp (or timestamp (now<>))}]
+    (writeJsonStr m)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -94,7 +88,7 @@
              :status Events/ERROR
              :type etype
              :code ecode
-             :error (or body {})} arg)))
+             :body (or body {})} arg)))
 
   ([etype ecode body]
    (errorObj<> etype ecode body nil))

@@ -85,6 +85,7 @@
           (cas/go-loop []
             (if-some [msg (cas/<! c)]
               (let [^EventSub ee cb]
+                (log/debug "pubsub: got msg for sub: %s" ee)
                 (if (== (.eventType ee)
                         (:type msg))
                   (.receive ee msg))

@@ -57,34 +57,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn lookupGame
-  "Find a game from the registry"
-  ^Game
-  [gameid rego]
-  (when-some [g (get rego gameid)]
-    (let [{:keys [enabled? minp maxp engine]
-           :or {enabled? false
-                minp 1
-                maxp 1
-                engine ""}}
-          (:network g)]
-      (log/debug "found game with uuid = %s" gameid)
-      (reify Game
-        (supportMultiPlayers [_] (boolean enabled?))
-        (maxPlayers [_] (if (spos? maxp)
-                          (int maxp)
-                          (int 9)))
-        (minPlayers [_] (if (spos? minp)
-                          (int minp)
-                          (int 1)))
-        (name [_] (:name g))
-        (engineClass [_] engine)
-        (gist [_] g)
-        (id [_] (:uuid g))
-        (unload [_] )))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (defn removeGameRoom
   "Remove an active room"
   ^Room

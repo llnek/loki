@@ -26,6 +26,7 @@
         [czlab.xlib.io]
         [czlab.loki.event.core]
         [czlab.loki.game.room]
+        [czlab.loki.game.core]
         [czlab.loki.game.player])
 
   (:import [czlab.wabbit.io IoService WSockEvent]
