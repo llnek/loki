@@ -31,7 +31,8 @@
         [czlab.loki.event.disp]
         [czlab.loki.game.session])
 
-  (:import [czlab.wabbit.server Cljshim Container]
+  (:import [java.util.concurrent.atomic AtomicInteger]
+           [czlab.wabbit.server Cljshim Container]
            [czlab.xlib Sendable Dispatchable]
            [czlab.wabbit.io IoService]
            [io.netty.channel Channel]
@@ -232,7 +233,8 @@
         engObj (.callEx crt (.engineClass gameObj)
                             (object-array [(atom {}) (ref {})]))
         impl (muble<> {:shutting? false})
-        sessions (atom (ordered-map))
+        pcount (AtomicInteger.)
+        sessions (atom {})
         disp (dispatcher<>)
         rid (uuid<>)
         created (now<>)]
@@ -247,9 +249,11 @@
           (.unsubscribeIfSession disp ps)))
 
       (connect [this py]
-        (let [ps (session<> this py (seqint2))
-              src {:puid (.id py)
-                   :pnum (.number ps)}]
+        (let [ps (session<> this
+                            py
+                            (.incrementAndGet pcount))
+              _ {:puid (.id py)
+                 :pnum (.number ps)}]
           (swap! sessions assoc (.id ps) ps)
           (.addSession py ps)
           ps))
@@ -275,11 +279,12 @@
           (-> (.player v)
               (.removeSession v))
           (closeQ v))
-        (reset! sessions (ordered-map)))
+        (reset! sessions {}))
 
       (activate [this]
         (let [eng (.engine this)
-              sss (vals @sessions)]
+              sss (sort-by #(.number ^Session %)
+                           (vals @sessions))]
           (log/debug "activating room %s" rid)
           (.setv impl :active? true)
           (doseq [s sss]
