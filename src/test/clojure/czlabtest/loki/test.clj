@@ -34,6 +34,7 @@
            [io.netty.handler.codec.http.websocketx
             WebSocketFrame
             TextWebSocketFrame]
+           [czlab.loki.mock MockEngine]
            [czlab.loki.core Engine]
            [czlab.loki.event Events]))
 
@@ -73,7 +74,7 @@
 (defn testEngine
   ""
   ^Engine
-  [a b] nil)
+  [a b] (MockEngine.))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -146,13 +147,68 @@
              (= id "u1")
              (nil? c4))))
 
-  (is (let [s (doPlayReq {:source (MockIOService.)
-                          :body {:gameid "game-1"
+  (is (let [gid "game-1"
+            s (doPlayReq {:source (MockIOService.)
+                          :body {:gameid gid
                                  :userid  "u1"
                                  :password "p1"}})
-            r (some-> s (.room ))]
+            t (doPlayReq {:source (MockIOService.)
+                          :body {:gameid gid
+                                 :userid  "u2"
+                                 :password "p2"}})
+            r1 (some-> s (.room ))
+            r2 (some-> t (.room ))
+            ok
+            (and (some? r1)
+                 (some? r2)
+                 (identical? r1 r2)
+                 (== 1 (countGameRooms gid))
+                 (== 0 (countFreeRooms gid))
+                 (.isActive r1))
+            _ (clearFreeRooms gid)
+            _ (clearGameRooms gid)]
+        (and ok
+             (== 0 (countGameRooms gid))
+             (== 0 (countFreeRooms gid)))))
+
+  (is (let [gid "game-1"
+            s (doPlayReq {:source (MockIOService.)
+                          :body {:gameid gid
+                                 :userid  "u3"
+                                 :password "p3"}})
+            r (some-> s (.room ))
+            ok
+            (and (some? r)
+                 (== 1 (countFreeRooms gid))
+                 (not (.canActivate r)))
+            _ (removeFreeRoom gid (.id r))]
+        (and ok
+             (== 0 (countFreeRooms gid)))))
+
+  (is (let [gid "game-1"
+            s (doPlayReq {:source (MockIOService.)
+                          :body {:gameid gid
+                                 :userid  "u4"
+                                 :password "p4"}})
+            r (some-> s (.room ))
+            na (not (.canActivate r))
+            nok (not (.isActive r))
+            t (doJoinReq {:source (MockIOService.)
+                          :body {:gameid gid
+                                 :roomid (some-> r (.id))
+                                 :userid  "u5"
+                                 :password "p5"}})
+            r2 (some-> t (.room))]
         (and (some? r)
-             (not (.canActivate r)))))
+             (some? r2)
+             na
+             nok
+             (identical? r r2)
+             (.isActive r2)
+             (== 1 (countGameRooms gid))
+             (== 0 (countFreeRooms gid))
+             (do->true (clearGameRooms gid))
+             (do->true (clearFreeRooms gid)))))
 
 
 

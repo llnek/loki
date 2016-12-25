@@ -16,7 +16,6 @@ package czlab.loki.core;
 
 import czlab.xlib.Disposable;
 import czlab.xlib.Initable;
-import java.util.Map;
 
 /**
  * @author kenl

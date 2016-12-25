@@ -57,6 +57,36 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+(defn countFreeRooms
+  ""
+  [gameid]
+  (count (get @free-rooms gameid)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn countGameRooms
+  ""
+  [gameid]
+  (count (get @game-rooms gameid)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn clearFreeRooms
+  "Internal only"
+  {:no-doc true}
+  [gameid]
+  (swap! free-rooms assoc gameid (ordered-map)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn clearGameRooms
+  "Internal only"
+  {:no-doc true}
+  [gameid]
+  (swap! game-rooms assoc gameid (ordered-map)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 (defn removeGameRoom
   "Remove an active room"
   ^Room
@@ -96,7 +126,7 @@
         g (.game room)
         gid (.id g)
         m (@free-rooms gid)]
-    (log/debug "add a room(F): %s, game: %s" rid gid)
+    (log/debug "adding a room(F): %s, game: %s" rid gid)
     (swap! free-rooms
            assoc
            gid
@@ -224,8 +254,8 @@
           (.addSession py ps)
           ps))
 
+      (isActive [_] (boolean (.getv impl :active?)))
       (isShuttingDown [_] (.getv impl :shutting?))
-      (isActive [_] (true? (.getv impl :active?)))
 
       (canActivate [this]
         (and (not (.isActive this))
@@ -307,6 +337,8 @@
 
   (let [pss (some-> (lookupFreeRoom game)
                     (.connect plyr))
+        _ (if (nil? pss)
+            (log/debug "failed to find a free room for game: %s" (.id game)))
         ^Session
         pss (or pss
                 (newFreeRoom game plyr arg))
