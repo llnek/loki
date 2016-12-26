@@ -15,26 +15,13 @@
 package czlab.loki.core;
 
 import czlab.xlib.Disposable;
+import czlab.xlib.Startable;
 import czlab.xlib.Initable;
 
 /**
  * @author kenl
  */
-public interface Engine extends Initable, Disposable {
-
-  //life cycle of engine
-  //1. initialize
-  //2. ready
-  //3. start/restart
-  public Object ready(Room room);
-
-  /**
-   */
-  public Object restart(Object arg);
-
-  /**
-   */
-  public Object start(Object arg);
+public interface Engine extends Initable, Startable, Disposable {
 
   /**
    */
@@ -46,11 +33,13 @@ public interface Engine extends Initable, Disposable {
 
   /**
    */
-  public void stop();
-
-  /**
-   */
   public void update(Object event);
+
+  //life cycle of engine
+  //1. initialize
+  //2. ready
+  //3. start/restart
+  public Object ready(Room room);
 
   /**
    */
