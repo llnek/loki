@@ -47,7 +47,7 @@ public interface Engine extends Initable, Startable, Disposable {
 
   /**
    */
-  public Object container();
+  public Room container();
 
 }
 

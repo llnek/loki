@@ -55,6 +55,8 @@ public interface Events {
   public static final long RESTART            = 840L;
   public static final long START              = 841L;
   public static final long STOP               = 842L;
+  public static final long START_ROUND        = 843L;
+  public static final long END_ROUND          = 844L;
 
   public static final long POKE_RUMBLE        = 860L;
   public static final long POKE_MOVE          = 861L;

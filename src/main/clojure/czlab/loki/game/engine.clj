@@ -20,16 +20,90 @@
   (:require [czlab.xlib.logging :as log]
             [clojure.java.io :as io])
 
-  (:use [czlab.xlib.core]
+  (:use [czlab.loki.event.core]
+        [czlab.xlib.core]
         [czlab.xlib.str])
 
-  (:import [czlab.loki.core Game]))
+  (:import [czlab.loki.core Engine Session Game]
+           [czlab.loki.event Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+(defn- dummy2 [a b] nil)
+(defn- dummy1 [a] nil)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn engine<>
+  ""
+  [{:keys [onRestart
+           onStart
+           onStop
+           onUpdate
+           onDispose]
+    :or {onRestart dummy2
+         onStart dummy2
+         onStop dummy1
+         onUpdate dummy2
+         onDispose dummy1}
+    :as impl}]
+  (let
+    [state (atom {})]
+    (reify Engine
+      (init [_ players]
+        (let [sessionids
+              (preduce<map>
+                #(let [^Session s %2]
+                   (assoc! %1 (.id s) s))
+                players)
+              playerids
+              (preduce<map>
+                #(let [^Session s %2]
+                  (assoc! %1
+                          (.. s player id)
+                          (.number s)))
+                players)]
+          (swap! state
+                 assoc
+                 :playerids playerids
+                 :sessions sessionids
+                 :players players )))
+      (ready [this room]
+        (log/debug "engine#ready called")
+        (swap! state assoc :room room)
+        (->> (:playerids @state)
+             (eventObj<> Events/LOCAL
+                         Events/START)
+             (.send (.container this))))
+      (restart [_ arg]
+        (log/debug "engine#restart called")
+        (onRestart @state arg))
+      (start [_ arg]
+        (log/debug "engine#start called")
+        (onStart @state arg))
+      (startRound [this arg]
+        (->> {:round (:round arg)}
+             (eventObj<> Events/LOCAL
+                         Events/START_ROUND)
+             (.send (.container this))))
+      (endRound [this arg]
+        (->> {:round (:round arg)}
+             (eventObj<> Events/LOCAL
+                         Events/END_ROUND)
+             (.send (.container this))))
+      (stop [this]
+        (->> (eventObj<> Events/LOCAL Events/STOP nil)
+             (.send (.container this)))
+        (onStop @state))
+      (update [_ evt]
+        (onUpdate @state evt))
+      (dispose [_]
+        (onDispose @state))
+      (state [_] @state)
+      (container [_] (:room @state)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
