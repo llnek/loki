@@ -69,7 +69,7 @@ public class MockEngine implements Engine {
   }
 
   @Override
-  public Object server() {
+  public Object container() {
     return null;
   }
 
