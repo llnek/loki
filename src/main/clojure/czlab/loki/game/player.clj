@@ -19,7 +19,8 @@
 
   (:require [czlab.xlib.logging :as log])
 
-  (:use [czlab.xlib.core]
+  (:use [czlab.xlib.guids]
+        [czlab.xlib.core]
         [czlab.xlib.io]
         [czlab.xlib.str])
 
@@ -36,17 +37,21 @@
 ;; player-db
 ;; {player-id -> {:p player :s {id -> session}}}
 (def ^:private player-db (atom {}))
+;; map of nicknames
+(def ^:private userid-db (atom {}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn removePlayer
   ""
   ^Player
-  [^String user]
-  (when-some [m (@player-db user)]
-    (swap! player-db dissoc user)
-    (doseq [[_ v] (:s m)] (closeQ v))
-    (:p m)))
+  [user]
+  (let [uid (get @userid-db user)
+        m (get @player-db uid)]
+    (when (some? m)
+      (swap! player-db dissoc uid)
+      (doseq [[_ v] (:s m)] (closeQ v))
+      (:p m))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -55,40 +60,41 @@
   ^Player
   [^String user ^String pwd]
   {:pre [(hgl? user)]}
-  (let [impl (muble<>)]
+  (let [impl (muble<>)
+        uid (uuid<>)]
     (reify
 
       Player
 
-      (setEmailId [_ email] (.setv impl :email email))
-      (emailId [_] (.getv impl :email))
-
-      (setName [_ n] (.setv impl :name n))
-      (name [_] (.getv impl :name))
-      (id [_] user)
+      (nickname [_] user)
+      (id [_] uid)
 
       (removeSession [_ ps]
-        (if-some [m (@player-db user)]
+        (if-some [m (get @player-db uid)]
           (swap! player-db
                  assoc
-                 user
+                 uid
                  (update-in m
                             [:s]
                             dissoc (.id ps)))))
 
       (countSessions [_]
-        (if-some [m (@player-db user)]
+        (if-some [m (get @player-db uid)]
           (int (count (:s m)))
           (int 0)))
 
       (addSession [_ ps]
-        (let [m (@player-db user)]
+        (let [m (get @player-db uid)]
           (swap! player-db
                  assoc
-                 user
+                 uid
                  (update-in m
                             [:s]
                             assoc (.id ps) ps))))
+
+      (updateGist [_ g] (if (map? g)
+                          (.copyEx impl g)))
+      (gist [_] (.intern impl))
 
       (logout [_]
         (removePlayer user)))))
@@ -99,12 +105,15 @@
   ""
   ^Player
   [^String user ^String pwd]
-  (if-some [m (@player-db user)]
-    (:p m)
-    (let [p2 (player<> user pwd)]
-      (swap! player-db
-             assoc user {:p p2 :s {}})
-      p2)))
+  (let [uid (get @userid-db user)
+        m (get @player-db uid)]
+    (if (some? m)
+      (:p m)
+      (let [p2 (player<> user pwd)]
+        (swap! userid-db assoc user (.id p2))
+        (swap! player-db
+               assoc (.id p2) {:p p2 :s {}})
+        p2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -112,7 +121,9 @@
   ""
   {:tag Player}
   ([user pwd] (createPlayer user pwd))
-  ([user] (:p (@player-db user))))
+  ([user] (->> (get @userid-db user)
+               (get @player-db)
+               (:p ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

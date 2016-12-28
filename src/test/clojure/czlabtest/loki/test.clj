@@ -132,10 +132,11 @@
              (nil? c4))))
 
   (is (let [c1 (lookupPlayer "u1" "p1")
-            _ (.setEmailId c1 "e")
-            _ (.setName c1 "n")
-            e (.emailId c1)
-            n (.name c1)
+            _ (.updateGist c1 {:email "e"
+                               :name "n"})
+            e (:email (.gist c1))
+            n (:name (.gist c1))
+            nn (.nickname c1)
             id (.id c1)
             cs (.countSessions c1)
             _ (.logout c1)
@@ -144,7 +145,8 @@
              (= e "e")
              (= n "n")
              (== 0 cs)
-             (= id "u1")
+             (= nn "u1")
+             (not= nn id)
              (nil? c4))))
 
   (is (let [gid "game-1"

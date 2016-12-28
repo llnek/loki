@@ -215,14 +215,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- onLocalMsg
-  ""
-  [^Room room evt]
-  ;;for now, just bcast everything
-  (.broadcast room evt))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (defn- room<>
   ""
   ^Room
@@ -298,15 +290,17 @@
 
       (send [this msg]
         (condp = (:type msg)
-          Events/LOCAL (onLocalMsg this msg)
-          Events/UNIT (onSessionMsg this msg)
+          Events/UNIT (if-some [^Sendable
+                                s (:context msg)]
+                        (.send s msg))
+          Events/LOCAL (.broadcast this msg)
           (log/warn "room.sendmsg: unhandled event %s" msg)))
 
       (receive [this evt]
         (let [eng (.engine this)]
           (log/debug "room got an event %s" evt)
           (condp = (:type evt)
-            Events/LOCAL (onLocalMsg this evt)
+            Events/LOCAL (.broadcast this evt)
             Events/UNIT (.update eng evt)
             (log/warn "room.onmsg: unhandled event %s" evt))))
 

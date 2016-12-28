@@ -14,40 +14,15 @@
 
 package czlab.loki.core;
 
-import czlab.xlib.Identifiable;
-import czlab.xlib.Nameable;
-
 /**
  * @author Kenneth Leung
  */
-public interface Player extends Identifiable {
+public interface Arena {
 
   /**
    */
-  public Object updateGist(Object gist);
-
-  /**
-   */
-  public void removeSession(Session s);
-
-  /**
-   */
-  public void addSession(Session s);
-
-  /**
-   */
-  public int countSessions();
-
-  /**
-   */
-  public Object nickname();
-
-  /**
-   */
-  public void logout();
-
-  /**
-   */
-  public Object gist();
+  public Object onEvent(Session s, Object evt);
 
 }
+
+

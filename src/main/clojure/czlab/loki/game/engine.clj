@@ -24,7 +24,7 @@
         [czlab.xlib.core]
         [czlab.xlib.str])
 
-  (:import [czlab.loki.core Engine Session Game]
+  (:import [czlab.loki.core Engine Game Arena Session]
            [czlab.loki.event Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -39,7 +39,8 @@
 ;;
 (defn engine<>
   ""
-  [{:keys [onRestart
+  [^Arena arenaObj
+   {:keys [onRestart
            onStart
            onStop
            onUpdate
@@ -50,6 +51,7 @@
          onUpdate dummy2
          onDispose dummy1}
     :as impl}]
+  {:pre [(some? arenaObj)]}
   (let
     [state (atom {})]
     (reify Engine
@@ -98,8 +100,10 @@
         (->> (eventObj<> Events/LOCAL Events/STOP nil)
              (.send (.container this)))
         (onStop @state))
-      (update [_ evt]
-        (onUpdate @state evt))
+      (update [this evt]
+        (.onEvent arenaObj
+                  ^Session (:context evt)
+                  (dissoc :context evt)))
       (dispose [_]
         (onDispose @state))
       (state [_] @state)
