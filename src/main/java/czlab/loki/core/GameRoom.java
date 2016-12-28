@@ -14,48 +14,27 @@
 
 package czlab.loki.core;
 
-import czlab.xlib.Dispatchable;
-import czlab.xlib.Identifiable;
-import czlab.xlib.Receivable;
-import czlab.xlib.Sendable;
-import java.io.Closeable;
 
 /**
  * @author Kenneth Leung
  */
-public interface Room extends Identifiable
-                              , Sendable
-                              , Receivable
-                              , Dispatchable
-                              , Closeable {
+public interface GameRoom extends Room {
 
   /**
    */
-  public void broadcast(Object networkEvent);
+  public Engine engine();
 
   /**
    */
-  public void disconnect(Session s);
+  public Game game();
 
   /**
    */
-  public Session connect(Player p);
+  public boolean canActivate();
 
   /**
    */
-  public int countPlayers();
-
-  /**
-   */
-  public boolean isShuttingDown();
-
-  /**
-   */
-  public boolean isActive();
-
-  /**
-   */
-  public Object gist();
+  public void activate();
 
 }
 

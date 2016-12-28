@@ -38,11 +38,12 @@
            [io.netty.channel Channel]
            [clojure.lang Keyword]
            [czlab.loki.core
+            Engine
             Game
             Room
             Player
             Session
-            Engine]
+            GameRoom]
            [czlab.loki.event Events Subr PubSub]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -90,7 +91,7 @@
 ;;
 (defn removeGameRoom
   "Remove an active room"
-  ^Room
+  ^GameRoom
   [gameid roomid]
   (let [gm (@game-rooms gameid)
         r (get gm roomid)]
@@ -105,7 +106,7 @@
 ;;
 (defn removeFreeRoom
   "Remove a waiting room"
-  ^Room
+  ^GameRoom
   [gameid roomid]
   (let [gm (@free-rooms gameid)
         r (get gm roomid)]
@@ -121,7 +122,7 @@
   "Add a new partially filled room
    into the pending set"
   ^Room
-  [^Room room]
+  [^GameRoom room]
   {:pre [(some? room)]}
   (let [rid (.id room)
         g (.game room)
@@ -138,8 +139,8 @@
 ;;
 (defn addGameRoom
   "Move room into the active set"
-  ^Room
-  [^Room room]
+  ^GameRoom
+  [^GameRoom room]
   {:pre [(some? room)]}
   (let [rid (.id room)
         g (.game room)
@@ -167,10 +168,10 @@
 ;;
 (defn lookupFreeRoom
   "Returns a free room which is detached from the pending set"
-  {:tag Room}
+  {:tag GameRoom}
   ([gameid roomid]
    (let [gm (@free-rooms gameid)
-         ^Room r (get gm roomid)]
+         ^GameRoom r (get gm roomid)]
      (when (some? r)
        (detachFreeRoom gm gameid (.id r))
        r)))
@@ -178,7 +179,7 @@
    (let [gid (.id ^Game game)
          gm (@free-rooms gid)]
     (when-some
-      [^Room r (first (vals gm))]
+      [^GameRoom r (first (vals gm))]
       (detachFreeRoom gm gid (.id r))
       r))))
 
@@ -186,7 +187,7 @@
 ;;
 (defn lookupGameRoom
   ""
-  ^Room
+  ^GameRoom
   [gameid roomid]
   (log/debug "looking for room: %s, game: %s" roomid gameid)
   (get (@game-rooms gameid) roomid))
@@ -209,15 +210,15 @@
 ;;
 (defn- onSessionMsg
   ""
-  [^Room room evt]
+  [^GameRoom room evt]
   (if-some [s (:context evt)]
     (.send ^Sendable s evt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- room<>
+(defn- gameRoom<>
   ""
-  ^Room
+  ^GameRoom
   [^Game gameObj {:keys [source]}]
 
   (let [ctr (.server ^IoService source)
@@ -230,7 +231,7 @@
         disp (dispatcher<>)
         rid (uuid<>)
         created (now<>)]
-    (reify Room
+    (reify GameRoom
 
       (countPlayers [_] (count @sessions))
 
@@ -323,7 +324,7 @@
   ""
   ^Session
   [^Game game ^Player py options]
-  (let [room (room<> game options)]
+  (let [room (gameRoom<> game options)]
     (log/debug "created a new play room: %s" (.id room))
     (.connect room py)))
 
@@ -341,7 +342,7 @@
         ^Session
         pss (or pss
                 (newFreeRoom game plyr arg))
-        ^Room
+        ^GameRoom
         room (some-> pss (.room))]
     (when (some? room)
       (let
@@ -373,7 +374,7 @@
 (defn joinRoom
   ""
   ^Session
-  [^Room room ^Player plyr arg]
+  [^GameRoom room ^Player plyr arg]
   {:pre [(some? room)(some? plyr)]}
   (let [^Channel ch (:socket arg)
         game (.game room)]

@@ -35,7 +35,7 @@
             WebSocketFrame
             TextWebSocketFrame]
            [czlab.loki.mock MockEngine]
-           [czlab.loki.core Engine]
+           [czlab.loki.core GameRoom Room Engine]
            [czlab.loki.event Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -178,7 +178,7 @@
                           :body {:gameid gid
                                  :userid  "u3"
                                  :password "p3"}})
-            r (some-> s (.room ))
+            ^GameRoom r (some-> s (.room ))
             ok
             (and (some? r)
                  (== 1 (countFreeRooms gid))
@@ -192,7 +192,7 @@
                           :body {:gameid gid
                                  :userid  "u4"
                                  :password "p4"}})
-            r (some-> s (.room ))
+            ^GameRoom r (some-> s (.room ))
             na (not (.canActivate r))
             nok (not (.isActive r))
             t (doJoinReq {:source (MockIOService.)
