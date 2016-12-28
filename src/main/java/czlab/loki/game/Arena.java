@@ -12,40 +12,19 @@
  *
  * Copyright (c) 2013-2016, Kenneth Leung. All rights reserved. */
 
-package czlab.loki.core;
+package czlab.loki.game;
+
+import czlab.loki.core.Session;
 
 /**
  * @author Kenneth Leung
  */
-public interface Board {
+public interface Arena {
 
   /**
    */
-  public Iterable<?>  getNextMoves(Object game);
-
-  /**
-   */
-  public boolean isOver(Object game);
-
-  /**
-   */
-  public int evalScore(Object game);
-
-  /**
-   */
-  public void unmakeMove(Object game, Object move);
-
-  /**
-   */
-  public void makeMove(Object game, Object move);
-
-  /**
-   */
-  public void switchPlayer(Object game);
-
-  /**
-   */
-  public Object takeSnapshot();
+  public Object onEvent(Session s, Object evt);
 
 }
+
 

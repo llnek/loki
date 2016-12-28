@@ -23,7 +23,7 @@
   (:use [czlab.xlib.core]
         [czlab.xlib.str])
 
-  (:import [czlab.loki.core Game]))
+  (:import [czlab.loki.game Game]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)

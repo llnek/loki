@@ -29,8 +29,10 @@
 
   (:import [czlab.wabbit.server Container]
            [io.netty.channel Channel]
-           [czlab.loki.core
+           [czlab.loki.game
             Game
+            GameRoom]
+           [czlab.loki.core
             Room
             Player
             Session]

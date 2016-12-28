@@ -12,42 +12,14 @@
  *
  * Copyright (c) 2013-2016, Kenneth Leung. All rights reserved. */
 
-package czlab.loki.core;
+package czlab.loki.chat;
 
-import czlab.xlib.Disposable;
-import czlab.xlib.Startable;
-import czlab.xlib.Initable;
+import czlab.loki.core.Room;
 
 /**
- * @author kenl
+ * @author Kenneth Leung
  */
-public interface Engine extends Initable, Startable, Disposable {
-
-  /**
-   */
-  public void startRound(Object arg);
-
-  /**
-   */
-  public void endRound(Object any);
-
-  /**
-   */
-  public void update(Object event);
-
-  //life cycle of engine
-  //1. initialize
-  //2. ready
-  //3. start/restart
-  public Object ready(Room room);
-
-  /**
-   */
-  public Object state();
-
-  /**
-   */
-  public Room container();
+public interface ChatRoom extends Room {
 
 }
 

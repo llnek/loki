@@ -24,7 +24,8 @@
         [czlab.xlib.core]
         [czlab.xlib.str])
 
-  (:import [czlab.loki.core Engine Game Arena Session]
+  (:import [czlab.loki.game Engine Game Arena]
+           [czlab.loki.core Session]
            [czlab.loki.event Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

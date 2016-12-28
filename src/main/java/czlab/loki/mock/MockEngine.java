@@ -14,8 +14,8 @@
 
 package czlab.loki.mock;
 
-import czlab.loki.core.Engine;
-import czlab.loki.core.Room;
+import czlab.loki.game.GameRoom;
+import czlab.loki.game.Engine;
 
 /**
  * @author Kenneth Leung
@@ -33,7 +33,7 @@ public class MockEngine implements Engine {
   }
 
   @Override
-  public Object ready(Room room) {
+  public Object ready(GameRoom room) {
     return null;
   }
 
@@ -69,7 +69,7 @@ public class MockEngine implements Engine {
   }
 
   @Override
-  public Room container() {
+  public GameRoom container() {
     return null;
   }
 

@@ -30,14 +30,11 @@
         [czlab.loki.game.player])
 
   (:import [czlab.wabbit.io IoService WSockEvent]
+           [czlab.loki.core Room Player Session]
            [czlab.xlib Muble I18N XData]
            [io.netty.channel Channel]
            [czlab.loki.event Events]
-           [czlab.loki.core
-            Game
-            Room
-            Player
-            Session]
+           [czlab.loki.game Game]
            [czlab.wabbit.server Container]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

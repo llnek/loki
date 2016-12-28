@@ -12,39 +12,40 @@
  *
  * Copyright (c) 2013-2016, Kenneth Leung. All rights reserved. */
 
-package czlab.loki.core;
-
-import czlab.xlib.Identifiable;
-import czlab.xlib.Nameable;
+package czlab.loki.game;
 
 /**
  * @author Kenneth Leung
  */
-public interface Game extends Identifiable, Nameable {
+public interface Board {
 
   /**
    */
-  public boolean supportMultiPlayers();
+  public Iterable<?>  getNextMoves(Object game);
 
   /**
    */
-  public int maxPlayers();
+  public boolean isOver(Object game);
 
   /**
    */
-  public int minPlayers();
+  public int evalScore(Object game);
 
   /**
    */
-  public String engineClass();
+  public void unmakeMove(Object game, Object move);
 
   /**
    */
-  public Object gist();
+  public void makeMove(Object game, Object move);
 
   /**
    */
-  public Object unload();
+  public void switchPlayer(Object game);
+
+  /**
+   */
+  public Object takeSnapshot();
 
 }
 

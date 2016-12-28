@@ -12,16 +12,30 @@
  *
  * Copyright (c) 2013-2016, Kenneth Leung. All rights reserved. */
 
-package czlab.loki.core;
+package czlab.loki.game;
+
+import czlab.loki.core.Room;
 
 /**
  * @author Kenneth Leung
  */
-public interface Arena {
+public interface GameRoom extends Room {
 
   /**
    */
-  public Object onEvent(Session s, Object evt);
+  public Engine engine();
+
+  /**
+   */
+  public Game game();
+
+  /**
+   */
+  public boolean canActivate();
+
+  /**
+   */
+  public void activate();
 
 }
 

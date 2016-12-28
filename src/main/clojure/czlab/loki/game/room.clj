@@ -37,13 +37,14 @@
            [czlab.wabbit.io IoService]
            [io.netty.channel Channel]
            [clojure.lang Keyword]
-           [czlab.loki.core
+           [czlab.loki.game
             Engine
             Game
+            GameRoom]
+           [czlab.loki.core
             Room
             Player
-            Session
-            GameRoom]
+            Session]
            [czlab.loki.event Events Subr PubSub]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

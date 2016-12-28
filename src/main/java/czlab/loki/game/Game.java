@@ -12,13 +12,39 @@
  *
  * Copyright (c) 2013-2016, Kenneth Leung. All rights reserved. */
 
-package czlab.loki.core;
+package czlab.loki.game;
+
+import czlab.xlib.Identifiable;
+import czlab.xlib.Nameable;
 
 /**
  * @author Kenneth Leung
  */
-public interface ChatRoom extends Room {
+public interface Game extends Identifiable, Nameable {
+
+  /**
+   */
+  public boolean supportMultiPlayers();
+
+  /**
+   */
+  public int maxPlayers();
+
+  /**
+   */
+  public int minPlayers();
+
+  /**
+   */
+  public String engineClass();
+
+  /**
+   */
+  public Object gist();
+
+  /**
+   */
+  public Object unload();
 
 }
-
 

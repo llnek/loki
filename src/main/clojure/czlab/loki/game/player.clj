@@ -24,11 +24,8 @@
         [czlab.xlib.io]
         [czlab.xlib.str])
 
-  (:import [czlab.loki.core
-            Game
-            Room
-            Player
-            Session]))
+  (:import [czlab.loki.core Room Player Session]
+           [czlab.loki.game Game]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)

@@ -12,29 +12,42 @@
  *
  * Copyright (c) 2013-2016, Kenneth Leung. All rights reserved. */
 
-package czlab.loki.core;
+package czlab.loki.game;
 
+import czlab.xlib.Disposable;
+import czlab.xlib.Startable;
+import czlab.xlib.Initable;
 
 /**
- * @author Kenneth Leung
+ * @author kenl
  */
-public interface GameRoom extends Room {
+public interface Engine extends Initable, Startable, Disposable {
 
   /**
    */
-  public Engine engine();
+  public void startRound(Object arg);
 
   /**
    */
-  public Game game();
+  public void endRound(Object any);
 
   /**
    */
-  public boolean canActivate();
+  public void update(Object event);
+
+  //life cycle of engine
+  //1. initialize
+  //2. ready
+  //3. start/restart
+  public Object ready(GameRoom room);
 
   /**
    */
-  public void activate();
+  public Object state();
+
+  /**
+   */
+  public GameRoom container();
 
 }
 
