@@ -6,14 +6,8 @@
   :url "https://github.com/llnek/loki"
 
   :dependencies '[
-
     [org.clojure/clojure "1.8.0"]
     [czlab/czlab-wabbit "0.1.0"]
-
-    [com.cemerick/pomegranate "0.3.1" :scope "provided"]
-    [net.mikera/cljunit "0.6.0" :scope "provided"]
-    [junit/junit "4.12" :scope "provided" ]
-    [codox/codox "0.10.2" :scope "provided"]
   ]
 
   :source-paths #{"src/main/clojure" "src/main/java"}
