@@ -8,15 +8,22 @@
  * You must not remove this notice, or any other, from this software.
  */
 
-package czlab.loki.chat;
+package czlab.test.loki;
 
-import czlab.loki.core.Room;
+import mikera.cljunit.ClojureTest;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author Kenneth Leung
  */
-public interface ChatRoom extends Room {
-
+public class ClojureJUnit extends ClojureTest {
+    @Override
+    public List<String> namespaces() {
+        return Arrays.asList(new String[]{
+                "czlab.test.loki.test"
+        });
+    }
 }
 
 
