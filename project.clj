@@ -2,17 +2,16 @@
 ;;
 (defproject io.czlab/loki "0.1.0"
 
-  :description ""
-  :url "https://github.com/llnek/loki"
-
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
+
+  :description ""
+  :url "https://github.com/llnek/loki"
 
   :dependencies [[io.czlab/wabbit "0.1.0"]]
 
   :plugins [[lein-codox "0.10.2"]
-            [lein-czlab "0.1.0"]]
-  :hooks [leiningen.lein-czlab]
+            [lein-pprint "1.1.2"]]
 
   :profiles {:provided {:dependencies
                         [[net.mikera/cljunit "0.6.0" :scope "test"]
@@ -26,7 +25,7 @@
   :aot :all
 
   ;;:jar-exclusions [#"(?:^|/).svn/"]
-  :root-package "czlab"
+  :coordinate! "czlab"
   :omit-source true
 
   :java-source-paths ["src/main/java" "src/test/java"]
