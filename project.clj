@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defproject io.czlab/loki "0.1.0"
+(defproject io.czlab/loki "1.0.0"
 
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
@@ -8,23 +8,27 @@
   :description ""
   :url "https://github.com/llnek/loki"
 
-  :dependencies [[io.czlab/wabbit "0.1.0"]]
+  :dependencies [[io.czlab/wabbit "1.0.0"]]
 
-  :plugins [[lein-codox "0.10.2"]
-            [lein-pprint "1.1.2"]]
+  :plugins [[cider/cider-nrepl "0.14.0"]
+            [lein-cprint "1.2.0"]
+            [lein-junit "1.1.8"]
+            [lein-javadoc "0.3.0"]
+            [lein-codox "0.10.3"]]
 
   :profiles {:provided {:dependencies
-                        [[net.mikera/cljunit "0.6.0" :scope "test"]
-                         [junit/junit "4.12" :scope "test"]
-                         [org.clojure/clojure "1.8.0" :scope "provided"]
-                         [codox/codox "0.10.2" :scope "provided"]]}
+                        [[org.clojure/clojure "1.8.0" :scope "provided"]
+                         [net.mikera/cljunit "0.6.0" :scope "test"]
+                         [junit/junit "4.12" :scope "test"]]}
              :uberjar {:aot :all}}
+
+  :javadoc-opts {:package-names ["czlab.loki"]
+                 :output-dir "docs"}
 
   :global-vars {*warn-on-reflection* true}
   :target-path "out/%s"
   :aot :all
 
-  ;;:jar-exclusions [#"(?:^|/).svn/"]
   :coordinate! "czlab"
   :omit-source true
 
