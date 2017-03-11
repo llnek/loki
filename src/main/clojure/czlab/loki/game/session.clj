@@ -11,18 +11,17 @@
 
   czlab.loki.game.session
 
-  (:require [czlab.xlib.logging :as log])
+  (:require [czlab.basal.logging :as log])
 
-  (:use [czlab.xlib.process]
-        [czlab.xlib.core]
-        [czlab.xlib.str]
-        [czlab.xlib.io]
+  (:use [czlab.basal.process]
+        [czlab.basal.core]
+        [czlab.basal.str]
+        [czlab.basal.io]
         [czlab.loki.system.util]
         [czlab.loki.event.core]
         [czlab.loki.event.disp])
 
-  (:import [czlab.wabbit.server Container]
-           [io.netty.channel Channel]
+  (:import [io.netty.channel Channel]
            [czlab.loki.game
             Game
             GameRoom]
@@ -30,7 +29,7 @@
             Room
             Player
             Session]
-           [czlab.xlib Hierarchial]
+           [czlab.jasal Hierarchial]
            [czlab.loki.event Events]
            [czlab.loki.net MsgSender]))
 

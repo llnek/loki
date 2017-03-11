@@ -11,11 +11,11 @@
 
   czlab.loki.event.core
 
-  (:require [czlab.xlib.logging :as log])
+  (:require [czlab.basal.logging :as log])
 
-  (:use [czlab.xlib.format]
-        [czlab.xlib.core]
-        [czlab.xlib.str])
+  (:use [czlab.basal.format]
+        [czlab.basal.core]
+        [czlab.basal.str])
 
   (:import [io.netty.handler.codec.http.websocketx
             WebSocketFrame

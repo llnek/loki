@@ -10,7 +10,7 @@
 
 package czlab.loki.net;
 
-import czlab.xlib.Sendable;
+import czlab.jasal.Sendable;
 import java.io.Closeable;
 
 /**

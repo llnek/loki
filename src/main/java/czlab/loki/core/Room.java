@@ -10,10 +10,10 @@
 
 package czlab.loki.core;
 
-import czlab.xlib.Dispatchable;
-import czlab.xlib.Identifiable;
-import czlab.xlib.Receivable;
-import czlab.xlib.Sendable;
+import czlab.jasal.Dispatchable;
+import czlab.jasal.Identifiable;
+import czlab.jasal.Receivable;
+import czlab.jasal.Sendable;
 import java.io.Closeable;
 
 /**

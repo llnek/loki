@@ -11,27 +11,26 @@
 
   czlab.loki.system.core
 
-  (:require [czlab.xlib.logging :as log]
+  (:require [czlab.basal.logging :as log]
             [clojure.java.io :as io])
 
-  (:use [czlab.convoy.netty.core]
+  (:use [czlab.convoy.nettio.core]
         [czlab.flux.wflow.core]
-        [czlab.xlib.format]
-        [czlab.xlib.core]
-        [czlab.xlib.io]
-        [czlab.xlib.str]
+        [czlab.basal.format]
+        [czlab.basal.core]
+        [czlab.basal.io]
+        [czlab.basal.str]
         [czlab.loki.system.util]
         [czlab.loki.event.core]
         [czlab.loki.game.reqs])
 
-  (:import [czlab.flux.wflow WorkStream Job]
-           [czlab.wabbit.io WSockEvent]
+  (:import [czlab.flux.wflow Workstream Job]
+           [czlab.wabbit.plugs.io WsockMsg]
            [czlab.loki.event Events]
            [czlab.loki.core Session]
-           [czlab.xlib XData]
+           [czlab.jasal XData]
            [java.io File]
-           [io.netty.channel Channel]
-           [czlab.wabbit.server Container]))
+           [io.netty.channel Channel]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -42,7 +41,7 @@
   "Handle job directly"
   [^Job job]
 
-  (let [^WSockEvent ws (.event job)
+  (let [^WsockMsg ws (.origin job)
         ^Channel ch (.socket ws)
         {:keys [type code] :as req}
         (->> {:socket ch
@@ -78,9 +77,9 @@
 ;;
 (defn lokiHandler
   "Wrap handler as a workflow"
-  ^WorkStream
+  ^Workstream
   []
-  (workStream<>
+  (workstream<>
     (script<>
       #(lokiOnEvent %2))))
 

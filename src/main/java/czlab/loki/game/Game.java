@@ -10,8 +10,8 @@
 
 package czlab.loki.game;
 
-import czlab.xlib.Identifiable;
-import czlab.xlib.Nameable;
+import czlab.jasal.Identifiable;
+import czlab.jasal.Nameable;
 
 /**
  * @author Kenneth Leung

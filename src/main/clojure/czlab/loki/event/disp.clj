@@ -11,7 +11,7 @@
 
   czlab.loki.event.disp
 
-  (:require [czlab.xlib.logging :as log]
+  (:require [czlab.basal.logging :as log]
             [clojure.core.async
              :as cas
              :refer
@@ -23,9 +23,9 @@
               go-loop]])
 
   (:use [czlab.loki.event.core]
-        [czlab.xlib.core]
-        [czlab.xlib.io]
-        [czlab.xlib.str])
+        [czlab.basal.core]
+        [czlab.basal.io]
+        [czlab.basal.str])
 
   (:import [czlab.loki.event Subr PubSub]
            [czlab.loki.net TcpSender]

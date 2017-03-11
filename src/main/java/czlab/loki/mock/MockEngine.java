@@ -34,6 +34,16 @@ public class MockEngine implements Engine {
   }
 
   @Override
+  public Object restart() {
+    return null;
+  }
+
+  @Override
+  public Object start() {
+    return null;
+  }
+
+  @Override
   public Object restart(Object arg) {
     return null;
   }

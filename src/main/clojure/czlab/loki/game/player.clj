@@ -11,12 +11,11 @@
 
   czlab.loki.game.player
 
-  (:require [czlab.xlib.logging :as log])
+  (:require [czlab.basal.logging :as log])
 
-  (:use [czlab.xlib.guids]
-        [czlab.xlib.core]
-        [czlab.xlib.io]
-        [czlab.xlib.str])
+  (:use [czlab.basal.core]
+        [czlab.basal.io]
+        [czlab.basal.str])
 
   (:import [czlab.loki.core Room Player Session]
            [czlab.loki.game Game]))

@@ -11,25 +11,24 @@
 
   czlab.loki.game.reqs
 
-  (:require [czlab.xlib.resources :refer [rstr]]
-            [czlab.xlib.logging :as log])
+  (:require [czlab.basal.resources :refer [rstr]]
+            [czlab.basal.logging :as log])
 
-  (:use [czlab.xlib.format]
-        [czlab.xlib.core]
-        [czlab.xlib.str]
-        [czlab.xlib.io]
+  (:use [czlab.basal.format]
+        [czlab.basal.core]
+        [czlab.basal.str]
+        [czlab.basal.io]
         [czlab.loki.event.core]
         [czlab.loki.game.room]
         [czlab.loki.game.core]
         [czlab.loki.game.player])
 
-  (:import [czlab.wabbit.io IoService WSockEvent]
-           [czlab.loki.core Room Player Session]
-           [czlab.xlib Muble I18N XData]
+  (:import [czlab.loki.core Room Player Session]
+           [czlab.wabbit.ctl Pluglet]
+           [czlab.jasal Muble I18N XData]
            [io.netty.channel Channel]
            [czlab.loki.event Events]
-           [czlab.loki.game Game]
-           [czlab.wabbit.server Container]))
+           [czlab.loki.game Game]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -39,7 +38,7 @@
 (defn doPlayReq
   "source json = {:gameid, :userid, :password}"
   ^Session
-  [{:keys [^IoService source socket body] :as evt}]
+  [{:keys [^Pluglet source socket body] :as evt}]
   (let [rcb (if (some? source)
               (I18N/bundle (.. source server id)))
         {:keys [gameid userid password]} body]
@@ -83,7 +82,7 @@
   "Request to join a specific game room.  Not used now.
   source json = {:gameid, :roomid, :userid, :password}"
   ^Session
-  [{:keys [^IoService source socket body] :as evt}]
+  [{:keys [^Pluglet source socket body] :as evt}]
   (let [rcb (if (some? source)
               (I18N/bundle (.. source server id)))
         {:keys [gameid roomid userid password]} body]

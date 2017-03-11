@@ -11,7 +11,7 @@
 package czlab.loki.event;
 
 import czlab.loki.core.Session;
-import czlab.xlib.Receivable;
+import czlab.jasal.Receivable;
 
 /**
  * @author Kenneth Leung

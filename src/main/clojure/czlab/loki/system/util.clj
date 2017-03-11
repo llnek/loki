@@ -11,11 +11,11 @@
 
   czlab.loki.system.util
 
-  (:require [czlab.xlib.logging :as log])
+  (:require [czlab.basal.logging :as log])
 
-  (:use [czlab.convoy.netty.core]
-        [czlab.xlib.core]
-        [czlab.xlib.str])
+  (:use [czlab.convoy.nettio.core]
+        [czlab.basal.core]
+        [czlab.basal.str])
 
   (:import [io.netty.util AttributeKey]))
 

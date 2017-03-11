@@ -8,7 +8,9 @@
   :description ""
   :url "https://github.com/llnek/loki"
 
-  :dependencies [[io.czlab/wabbit "1.0.0"]]
+  :dependencies [[org.clojure/core.async "0.3.441"]
+                 [io.czlab/wabbit-plugs "1.0.0"]
+                 [io.czlab/wabbit "1.0.0"]]
 
   :plugins [[cider/cider-nrepl "0.14.0"]
             [lein-cprint "1.2.0"]

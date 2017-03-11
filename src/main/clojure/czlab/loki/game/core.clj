@@ -11,11 +11,11 @@
 
   czlab.loki.game.core
 
-  (:require [czlab.xlib.logging :as log]
+  (:require [czlab.basal.logging :as log]
             [clojure.java.io :as io])
 
-  (:use [czlab.xlib.core]
-        [czlab.xlib.str])
+  (:use [czlab.basal.core]
+        [czlab.basal.str])
 
   (:import [czlab.loki.game Game]))
 

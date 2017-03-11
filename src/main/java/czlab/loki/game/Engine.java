@@ -10,14 +10,15 @@
 
 package czlab.loki.game;
 
-import czlab.xlib.Disposable;
-import czlab.xlib.Startable;
-import czlab.xlib.Initable;
+import czlab.jasal.Restartable;
+import czlab.jasal.Disposable;
+import czlab.jasal.Startable;
+import czlab.jasal.Initable;
 
 /**
  * @author kenl
  */
-public interface Engine extends Initable, Startable, Disposable {
+public interface Engine extends Initable, Startable, Restartable, Disposable {
 
   /**
    */

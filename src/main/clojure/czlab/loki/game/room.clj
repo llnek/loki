@@ -11,24 +11,22 @@
 
   czlab.loki.game.room
 
-  (:require [czlab.xlib.logging :as log])
+  (:require [czlab.basal.logging :as log])
 
-  (:use [czlab.convoy.netty.core]
-        [czlab.xlib.format]
+  (:use [czlab.convoy.nettio.core]
+        [czlab.basal.format]
         [flatland.ordered.map]
-        [czlab.xlib.core]
-        [czlab.xlib.guids]
-        [czlab.xlib.str]
-        [czlab.xlib.io]
+        [czlab.basal.core]
+        [czlab.basal.str]
+        [czlab.basal.io]
         [czlab.loki.system.util]
         [czlab.loki.event.core]
         [czlab.loki.event.disp]
         [czlab.loki.game.session])
 
   (:import [java.util.concurrent.atomic AtomicInteger]
-           [czlab.wabbit.server Cljshim Container]
-           [czlab.xlib Sendable Dispatchable]
-           [czlab.wabbit.io IoService]
+           [czlab.jasal Sendable Dispatchable]
+           [czlab.wabbit.ctl Pluglet]
            [io.netty.channel Channel]
            [clojure.lang Keyword]
            [czlab.loki.game
@@ -216,7 +214,7 @@
   ^GameRoom
   [^Game gameObj {:keys [source]}]
 
-  (let [ctr (.server ^IoService source)
+  (let [ctr (.server ^Pluglet source)
         crt (.cljrt ctr)
         engObj (.callEx crt (.engineClass gameObj)
                             (object-array [(atom {}) (ref {})]))
