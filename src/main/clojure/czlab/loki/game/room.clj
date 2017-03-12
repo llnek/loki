@@ -53,144 +53,124 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn countFreeRooms
-  ""
-  [gameid]
-  (count (get @free-rooms gameid)))
+  "" [gameid] (count (get @free-rooms gameid)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn countGameRooms
-  ""
-  [gameid]
-  (count (get @game-rooms gameid)))
+  "" [gameid] (count (get @game-rooms gameid)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn clearFreeRooms
-  "Internal only"
-  {:no-doc true}
-  [gameid]
-  (swap! free-rooms assoc gameid (ordered-map)))
+  "Internal only" {:no-doc true}
+  [gameid] (swap! free-rooms assoc gameid (ordered-map)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn clearGameRooms
-  "Internal only"
-  {:no-doc true}
-  [gameid]
-  (swap! game-rooms assoc gameid (ordered-map)))
+  "Internal only" {:no-doc true}
+  [gameid] (swap! game-rooms assoc gameid (ordered-map)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn removeGameRoom
   "Remove an active room"
-  ^GameRoom
-  [gameid roomid]
+  ^GameRoom [gameid roomid]
+
   (let [gm (@game-rooms gameid)
         r (get gm roomid)]
     (when (some? r)
       (log/debug "remove room(A): %s, game: %s" roomid gameid)
-      (swap! game-rooms
-             assoc
-             gameid (dissoc gm roomid))
+      (swap! game-rooms update-in [gameid] dissoc roomid)
       r)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn removeFreeRoom
   "Remove a waiting room"
-  ^GameRoom
-  [gameid roomid]
+  ^GameRoom [gameid roomid]
+
   (let [gm (@free-rooms gameid)
         r (get gm roomid)]
-    (log/debug "remove room(F): %s, game: %s" roomid gameid)
-    (swap! free-rooms
-           assoc
-           gameid (dissoc gm roomid))
-    r))
+    (when (some? r)
+      (log/debug "remove room(F): %s, game: %s" roomid gameid)
+      (swap! free-rooms update-in [gameid] dissoc roomid)
+      r)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn addFreeRoom
   "Add a new partially filled room
    into the pending set"
-  ^Room
-  [^GameRoom room]
-  {:pre [(some? room)]}
+  ^GameRoom [^GameRoom room] {:pre [(some? room)]}
+
   (let [rid (.id room)
-        g (.game room)
-        gid (.id g)
+        gid (.. room game id)
         m (@free-rooms gid)]
     (log/debug "adding a room(F): %s, game: %s" rid gid)
-    (swap! free-rooms
-           assoc
-           gid
-           (assoc (or m (ordered-map)) rid room))
+    (if (some? m)
+      (swap! free-rooms update-in [gid] assoc rid room)
+      (swap! free-rooms assoc gid (ordered-map rid room)))
     room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn addGameRoom
   "Move room into the active set"
-  ^GameRoom
-  [^GameRoom room]
-  {:pre [(some? room)]}
+  ^GameRoom [^GameRoom room] {:pre [(some? room)]}
+
   (let [rid (.id room)
-        g (.game room)
-        gid (.id g)
+        gid (.. room game id)
         m (@game-rooms gid)]
     (log/debug "add a room(A): %s, game: %s" rid gid)
-    (swap! game-rooms
-           assoc
-           gid
-           (assoc (or m (ordered-map)) rid room))
+    (if (some? m)
+      (swap! game-rooms update-in [gid] assoc rid room)
+      (swap! game-rooms assoc gid (ordered-map rid room)))
     room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- detachFreeRoom
-  ""
-  [gMap gameid roomid]
+  "" [gameid roomid]
+
   (log/debug "found a room(F): %s, game: %s" roomid gameid)
   (swap! free-rooms
-         assoc
-         gameid
-         (dissoc gMap roomid)))
+         update-in [gameid] dissoc roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn lookupFreeRoom
   "Returns a free room which is detached from the pending set"
   {:tag GameRoom}
+
   ([gameid roomid]
    (let [gm (@free-rooms gameid)
          ^GameRoom r (get gm roomid)]
      (when (some? r)
-       (detachFreeRoom gm gameid (.id r))
+       (detachFreeRoom gameid (.id r))
        r)))
+
   ([game]
    (let [gid (.id ^Game game)
          gm (@free-rooms gid)]
     (when-some
       [^GameRoom r (first (vals gm))]
-      (detachFreeRoom gm gid (.id r))
+      (detachFreeRoom gid (.id r))
       r))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn lookupGameRoom
-  ""
-  ^GameRoom
-  [gameid roomid]
+  "" ^GameRoom [gameid roomid]
   (log/debug "looking for room: %s, game: %s" roomid gameid)
   (get (@game-rooms gameid) roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- localSubr<>
-  ""
-  ^Subr
-  [^Session ps]
+  "" ^Subr [^Session ps]
+
   (reify Subr
     (eventType [_] Events/LOCAL)
     (session [_] ps)
@@ -202,17 +182,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- onSessionMsg
-  ""
-  [^GameRoom room evt]
-  (if-some [s (:context evt)]
-    (.send ^Sendable s evt)))
+  "" [^GameRoom room evt]
+  (if-some [s (:context evt)] (.send ^Sendable s evt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- gameRoom<>
-  ""
-  ^GameRoom
-  [^Game gameObj {:keys [source]}]
+  "" ^GameRoom [^Game gameObj {:keys [source]}]
 
   (let [ctr (.server ^Pluglet source)
         crt (.cljrt ctr)
@@ -222,7 +198,7 @@
         pcount (AtomicInteger.)
         sessions (atom {})
         disp (dispatcher<>)
-        rid (uuid<>)
+        rid (uid<>)
         created (now<>)]
     (reify GameRoom
 
@@ -244,8 +220,8 @@
           (.addSession py ps)
           ps))
 
+      (isShuttingDown [_] (boolean (.getv impl :shutting?)))
       (isActive [_] (boolean (.getv impl :active?)))
-      (isShuttingDown [_] (.getv impl :shutting?))
 
       (canActivate [this]
         (and (not (.isActive this))
@@ -314,9 +290,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn newFreeRoom
-  ""
-  ^Session
-  [^Game game ^Player py options]
+  "" ^Session [^Game game ^Player py options]
+
   (let [room (gameRoom<> game options)]
     (log/debug "created a new play room: %s" (.id room))
     (.connect room py)))
@@ -324,9 +299,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn openRoom
-  ""
-  ^Session
-  [^Game game ^Player plyr arg]
+  "" ^Session [^Game game ^Player plyr arg]
 
   (let [pss (some-> (lookupFreeRoom game)
                     (.connect plyr))
@@ -336,7 +309,7 @@
         pss (or pss
                 (newFreeRoom game plyr arg))
         ^GameRoom
-        room (some-> pss (.room))]
+        room (some-> pss .room)]
     (when (some? room)
       (let
         [^Channel ch (:socket arg)
@@ -365,10 +338,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn joinRoom
-  ""
-  ^Session
+  "" ^Session
   [^GameRoom room ^Player plyr arg]
   {:pre [(some? room)(some? plyr)]}
+
   (let [^Channel ch (:socket arg)
         game (.game room)]
     (when (< (.countPlayers room)

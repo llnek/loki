@@ -68,7 +68,7 @@
 
       (isConnected [this] (== Events/S_CONNECTED (.status this)))
 
-      (isShuttingDown [_] (.getv impl :shutting?))
+      (isShuttingDown [_] (bool! (.getv impl :shutting?)))
 
       (bind [this options]
         (.setv impl :tcp (tcpSender<> (:socket options)))

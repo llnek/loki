@@ -38,17 +38,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn lookupGame
-  "Find a game from the registry"
-  ^Game
-  [gameid]
+  "Find game from registry" ^Game [gameid]
+
   (when-some [g (*game-rego* (keyword gameid))]
     (let [{:keys [enabled? minp maxp engine]
-           :or {enabled? false
-                minp 1
-                maxp 1
-                engine ""}}
+           :or {minp 1 maxp 1 engine ""}}
           (:network g)]
-      (log/debug "found game with uuid = %s" gameid)
+      (log/debug "found game with id = %s" gameid)
       (reify Game
         (supportMultiPlayers [_] (boolean enabled?))
         (maxPlayers [_] (if (spos? maxp)

@@ -20,10 +20,6 @@ public interface MsgSender extends Sendable, Closeable {
 
   /**
    */
-  public boolean isReliable();
-
-  /**
-   */
   public Object socket();
 
 }

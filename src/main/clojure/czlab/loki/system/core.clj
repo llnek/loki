@@ -37,17 +37,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn lokiOnEvent
-  "Handle job directly"
-  [^Job job]
+(defn- lokiOnEvent "" [^Job job]
 
   (let [^WsockMsg ws (.origin job)
-        ^Channel ch (.socket ws)
+        ch (.socket ws)
         {:keys [type code] :as req}
         (->> {:socket ch
               :source (.source ws)}
              (decodeEvent (.. ws
-                              body stringify)))]
+                              body strit)))]
     (cond
       (and (== type Events/UNIT)
            (== code Events/PLAYGAME_REQ))
@@ -77,11 +75,7 @@
 ;;
 (defn lokiHandler
   "Wrap handler as a workflow"
-  ^Workstream
-  []
-  (workstream<>
-    (script<>
-      #(lokiOnEvent %2))))
+  ^Workstream [] (workstream<> lokiOnEvent))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

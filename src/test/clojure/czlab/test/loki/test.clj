@@ -19,16 +19,16 @@
         [czlab.loki.game.room]
         [czlab.loki.game.reqs]
         [czlab.loki.game.session]
-        [czlab.xlib.format]
-        [czlab.xlib.core]
-        [czlab.xlib.str]
+        [czlab.basal.format]
+        [czlab.basal.core]
+        [czlab.basal.str]
         [clojure.test])
 
-  (:import [czlab.wabbit.mock.test MockContainer MockIOService]
-           [io.netty.handler.codec.http.websocketx
+  (:import [io.netty.handler.codec.http.websocketx
             WebSocketFrame
             TextWebSocketFrame]
            [czlab.loki.game GameRoom Engine]
+           [czlab.wabbit.ctl Pluglet]
            [czlab.loki.mock MockEngine]
            [czlab.loki.core Room]
            [czlab.loki.event Events]))
@@ -40,6 +40,10 @@
   evt-json
   "{\"type\" : 100, \"status\": 200, \"code\":111, \"body\": { \"a\" : 911 }}")
 (def ^:private evt-body {:a 911})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn- mockPluglet "" ^Pluglet [])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -145,11 +149,11 @@
              (nil? c4))))
 
   (is (let [gid "game-1"
-            s (doPlayReq {:source (MockIOService.)
+            s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :userid  "u1"
                                  :password "p1"}})
-            t (doPlayReq {:source (MockIOService.)
+            t (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :userid  "u2"
                                  :password "p2"}})
@@ -169,7 +173,7 @@
              (== 0 (countFreeRooms gid)))))
 
   (is (let [gid "game-1"
-            s (doPlayReq {:source (MockIOService.)
+            s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :userid  "u3"
                                  :password "p3"}})
@@ -183,14 +187,14 @@
              (== 0 (countFreeRooms gid)))))
 
   (is (let [gid "game-1"
-            s (doPlayReq {:source (MockIOService.)
+            s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :userid  "u4"
                                  :password "p4"}})
             ^GameRoom r (some-> s (.room ))
             na (not (.canActivate r))
             nok (not (.isActive r))
-            t (doJoinReq {:source (MockIOService.)
+            t (doJoinReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :roomid (some-> r (.id))
                                  :userid  "u5"
@@ -211,5 +215,6 @@
 
   (is (string? "That's all folks!")))
 
-;;(clojure.test/run-tests 'czlab.test.loki.czlabtestloki-test)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;EOF
 

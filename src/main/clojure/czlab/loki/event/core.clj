@@ -32,7 +32,8 @@
 (defn encodeEventAsJson
   "Turn data into a json string"
   ^String
-  [{:keys [timestamp status type code body] :as evt}]
+  [{:keys [timestamp status
+           type code body] :as evt}]
   {:pre [(number? status)
          (number? type)(number? code)]}
   (let [m {:status status
@@ -46,11 +47,8 @@
 ;;
 (defn encodeEvent
   "Turn data into a websocket frame"
-  ^WebSocketFrame
-  [evt]
-  {:pre [(map? evt)]}
-  (->> (encodeEventAsJson evt)
-       (TextWebSocketFrame. )))
+  ^WebSocketFrame [evt] {:pre [(map? evt)]}
+  (->> (encodeEventAsJson evt) (TextWebSocketFrame. )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -59,20 +57,19 @@
   If error, catch and return it with an invalid type."
   {:tag APersistentMap}
   ([data] (decodeEvent data nil))
-  ([data extraBits]
+  ([data extras]
    (log/debug "decoding json: %s" data)
    (try!
      (let [evt (readJsonStrKW data)]
        (when-not (number? (:type evt))
          (trap! EventError
-                (format "Event type info: %s" (:type evt))))
-       (merge evt extraBits)))))
+                (format "Event type info: %d" (:type evt))))
+       (merge evt extras)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn errorObj<>
-  ""
-  {:tag APersistentMap}
+  "" {:tag APersistentMap}
 
   ([etype ecode body arg]
    {:pre [(number? etype)
@@ -93,8 +90,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn eventObj<>
-  ""
-  {:tag APersistentMap}
+  "" {:tag APersistentMap}
 
   ([etype ecode body arg]
    {:pre [(number? etype)
@@ -116,9 +112,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn replyEvent
-  "Reply back a message"
-  [^Channel ch msg]
-  ;;{:pre [(some? ch)(map? msg)]}
+  "Reply back a msg" [^Channel ch msg]
+
   (log/debug (str "reply back a msg "
                   "type: %d, code: %d")
              (:type msg) (:code msg))
@@ -132,9 +127,8 @@
 (defn replyError
   "Reply back an error"
   [^Channel ch error msg]
-  ;;{:pre [(some? ch)(number? error)]}
-  (replyEvent ch
-              (errorObj<> Events/UNIT error msg)))
+
+  (replyEvent ch (errorObj<> Events/UNIT error msg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

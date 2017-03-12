@@ -36,23 +36,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn doPlayReq
-  "source json = {:gameid, :userid, :password}"
+  "source json = {:gameid, :principal, :credential}"
   ^Session
   [{:keys [^Pluglet source socket body] :as evt}]
   (let [rcb (if (some? source)
               (I18N/bundle (.. source server id)))
-        {:keys [gameid userid password]} body]
+        {:keys [gameid principal credential]} body]
     (if (hgl? gameid)
       (let
         [g (lookupGame gameid)
          p (if (some? g)
-             (lookupPlayer userid
-                           password))
+             (lookupPlayer principal
+                           (charsit credential)))
          ps (if (and (some? g)
-                     (some? p))
-              (openRoom g p evt))
-         r (some-> ps (.room))]
-        (log/debug "gameid %s loaded as %s" gameid g)
+                     (some? p)) (openRoom g p evt))
+         r (some-> ps .room)]
+        (log/debug "gameid#%s loaded as: %s" gameid g)
         (cond
           (nil? g)
           (do->nil
@@ -80,16 +79,16 @@
 ;; source json = [gameid, roomid, userid, password]
 (defn doJoinReq
   "Request to join a specific game room.  Not used now.
-  source json = {:gameid, :roomid, :userid, :password}"
+  source json = {:gameid, :roomid, :principal, :credential}"
   ^Session
   [{:keys [^Pluglet source socket body] :as evt}]
   (let [rcb (if (some? source)
               (I18N/bundle (.. source server id)))
-        {:keys [gameid roomid userid password]} body]
+        {:keys [gameid roomid principal credential]} body]
     (if (and (hgl? gameid)
              (hgl? roomid))
       (let
-        [p (lookupPlayer userid password)
+        [p (lookupPlayer principal credential)
          r (if (some? p)
              (or (lookupGameRoom gameid roomid)
                  (lookupFreeRoom gameid roomid)))]

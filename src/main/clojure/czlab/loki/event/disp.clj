@@ -37,31 +37,27 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn tcpSender<>
-  ""
-  ^TcpSender
-  [^Channel ch]
+  "" ^TcpSender [^Channel ch]
+
   (reify TcpSender
     (send [_ evt]
       (.writeAndFlush ch (encodeEvent evt)))
-    (isReliable [_] true)
     (close [_]
       (log/debug "closing tcp: %s" ch)
       (closeQ ch))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn dispatcher<>
-  ""
-  ^PubSub
-  []
+(defn dispatcher<> "" ^PubSub []
+
   (let [handlers (atom {})]
     (reify PubSub
 
-      (unsubscribeIfSession [this s]
+      (unsubscribeIfSession [me s]
         (doseq [[^Subr cb _] @handlers
                 :let [pss (.session cb)]
                 :when (identical? pss s)]
-          (.unsubscribe this cb)))
+          (.unsubscribe me cb)))
 
       (publish [_ msg]
         (log/debug "pub message ==== %s" msg)
@@ -77,13 +73,12 @@
         (let [c (cas/chan 4)]
           (swap! handlers assoc cb c)
           (cas/go-loop []
-            (if-some [msg (cas/<! c)]
-              (let [^Subr ee cb]
-                (log/debug "pubsub: got msg for sub: %s" ee)
-                (if (== (.eventType ee)
-                        (:type msg))
-                  (.receive ee msg))
-                (recur))))))
+            (when-some [msg (cas/<! c)]
+              (log/debug "pubsub: got msg for sub: %s" cb)
+              (if (== (.eventType cb)
+                      (:type msg))
+                (.receive cb msg))
+              (recur)))))
 
       (close [_]
         (doseq [[_ c] @handlers]

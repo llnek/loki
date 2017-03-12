@@ -69,18 +69,20 @@
                  :sessions sessionids
                  :players players )))
       (ready [this room]
-        (log/debug "engine#ready called")
+        (log/debug "engine#ready() called")
         (swap! state assoc :room room)
         (->> (:playerids @state)
              (eventObj<> Events/LOCAL
                          Events/START)
              (.send (.container this))))
       (restart [_ arg]
-        (log/debug "engine#restart called")
+        (log/debug "engine#restart() called")
         (onRestart @state arg))
+      (restart [_] (.restart _ nil))
       (start [_ arg]
         (log/debug "engine#start called")
         (onStart @state arg))
+      (start [_] (.start _ nil))
       (startRound [this arg]
         (->> {:round (:round arg)}
              (eventObj<> Events/LOCAL
@@ -98,7 +100,7 @@
       (update [this evt]
         (.onEvent arenaObj
                   ^Session (:context evt)
-                  (dissoc :context evt)))
+                  (dissoc evt :context)))
       (dispose [_]
         (onDispose @state))
       (state [_] @state)

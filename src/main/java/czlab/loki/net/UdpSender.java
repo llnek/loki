@@ -15,8 +15,6 @@ package czlab.loki.net;
  */
 public interface UdpSender extends MsgSender {
 
-  default public boolean isReliable() { return false; }
-
 }
 
 

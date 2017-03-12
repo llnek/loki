@@ -15,6 +15,4 @@ package czlab.loki.net;
  */
 public interface TcpSender extends MsgSender {
 
-  default public boolean isReliable() { return true; }
-
 }

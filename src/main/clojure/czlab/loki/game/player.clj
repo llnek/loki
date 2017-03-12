@@ -33,51 +33,50 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn removePlayer
-  ""
-  ^Player
-  [user]
-  (let [uid (get @userid-db user)
-        m (get @player-db uid)]
+  "Remove player and
+  close all his sessions" ^Player [user]
+
+  (let [pid (get @userid-db user)
+        m (get @player-db pid)]
     (when (some? m)
-      (swap! player-db dissoc uid)
-      (doseq [[_ v] (:s m)] (closeQ v))
-      (:p m))))
+      (swap! player-db dissoc pid)
+      (doseq [[_ v] (:s m)] (closeQ v)) (:p m))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- player<>
-  ""
-  ^Player
-  [^String user ^String pwd]
+  "" ^Player
+  [^String user ^chars pwd]
   {:pre [(hgl? user)]}
+
   (let [impl (muble<>)
-        uid (uuid<>)]
+        pid (uid<>)]
     (reify
 
       Player
 
       (nickname [_] user)
-      (id [_] uid)
+      (id [_] pid)
 
       (removeSession [_ ps]
-        (if-some [m (get @player-db uid)]
+        (if-some [m (get @player-db pid)]
           (swap! player-db
                  assoc
-                 uid
+                 pid
                  (update-in m
                             [:s]
                             dissoc (.id ps)))))
 
       (countSessions [_]
-        (if-some [m (get @player-db uid)]
+        (if-some [m (get @player-db pid)]
           (int (count (:s m)))
           (int 0)))
 
       (addSession [_ ps]
-        (let [m (get @player-db uid)]
+        (let [m (get @player-db pid)]
           (swap! player-db
                  assoc
-                 uid
+                 pid
                  (update-in m
                             [:s]
                             assoc (.id ps) ps))))
@@ -94,9 +93,9 @@
 (defn createPlayer
   ""
   ^Player
-  [^String user ^String pwd]
-  (let [uid (get @userid-db user)
-        m (get @player-db uid)]
+  [^String user ^chars pwd]
+  (let [pid (get @userid-db user)
+        m (get @player-db pid)]
     (if (some? m)
       (:p m)
       (let [p2 (player<> user pwd)]
@@ -107,13 +106,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn lookupPlayer
-  ""
-  {:tag Player}
+(defn lookupPlayer "" {:tag Player}
+
   ([user pwd] (createPlayer user pwd))
   ([user] (->> (get @userid-db user)
-               (get @player-db)
-               (:p ))))
+               (get @player-db) :p )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
