@@ -47,11 +47,11 @@
              (decodeEvent (.. ws
                               body strit)))]
     (cond
-      (and (== type Events/UNIT)
+      (and (== type Events/PRIVATE)
            (== code Events/PLAYGAME_REQ))
       (doPlayReq req)
 
-      (and (== type Events/UNIT)
+      (and (== type Events/PRIVATE)
            (== code Events/JOINGAME_REQ))
       (doJoinReq req)
 

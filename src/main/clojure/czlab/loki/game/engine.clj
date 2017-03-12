@@ -72,7 +72,7 @@
         (log/debug "engine#ready() called")
         (swap! state assoc :room room)
         (->> (:playerids @state)
-             (eventObj<> Events/LOCAL
+             (eventObj<> Events/PUBLIC
                          Events/START)
              (.send (.container this))))
       (restart [_ arg]
@@ -85,16 +85,16 @@
       (start [_] (.start _ nil))
       (startRound [this arg]
         (->> {:round (:round arg)}
-             (eventObj<> Events/LOCAL
+             (eventObj<> Events/PUBLIC
                          Events/START_ROUND)
              (.send (.container this))))
       (endRound [this arg]
         (->> {:round (:round arg)}
-             (eventObj<> Events/LOCAL
+             (eventObj<> Events/PUBLIC
                          Events/END_ROUND)
              (.send (.container this))))
       (stop [this]
-        (->> (eventObj<> Events/LOCAL Events/STOP nil)
+        (->> (eventObj<> Events/PUBLIC Events/STOP nil)
              (.send (.container this)))
         (onStop @state))
       (update [this evt]

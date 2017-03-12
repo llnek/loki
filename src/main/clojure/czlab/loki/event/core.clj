@@ -128,7 +128,7 @@
   "Reply back an error"
   [^Channel ch error msg]
 
-  (replyEvent ch (errorObj<> Events/UNIT error msg)))
+  (replyEvent ch (errorObj<> Events/PRIVATE error msg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

@@ -16,9 +16,9 @@ package czlab.loki.event;
 public interface Events {
 
   // Event types
-  public static final long GLOBAL        = 1L;
-  public static final long LOCAL         = 2L;
-  public static final long UNIT          = 3L;
+  public static final long PROTECTED        = 1L;
+  public static final long PUBLIC         = 2L;
+  public static final long PRIVATE          = 3L;
 
   // Reply codes
   public static final long OK         = 200L;

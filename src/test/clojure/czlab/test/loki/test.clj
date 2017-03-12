@@ -20,6 +20,7 @@
         [czlab.loki.game.reqs]
         [czlab.loki.game.session]
         [czlab.basal.format]
+        [czlab.basal.meta]
         [czlab.basal.core]
         [czlab.basal.str]
         [clojure.test])
@@ -28,6 +29,8 @@
             WebSocketFrame
             TextWebSocketFrame]
            [czlab.loki.game GameRoom Engine]
+           [czlab.wabbit.base Cljshim]
+           [czlab.wabbit.sys Execvisor]
            [czlab.wabbit.ctl Pluglet]
            [czlab.loki.mock MockEngine]
            [czlab.loki.core Room]
@@ -43,7 +46,60 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- mockPluglet "" ^Pluglet [])
+(defn- mkexe "" []
+  (let
+    [rts (Cljshim/newrt (getCldr) "mock")
+     impl (muble<>)]
+    (with-meta
+      (reify
+        Execvisor
+
+        (homeDir [_] )
+        (pkeyBytes [this] (bytesit "hello world"))
+        (pkey [_] (.toCharArray "hello world"))
+        (cljrt [_] rts)
+
+        (getx [_] impl)
+        (version [_] "1.0")
+        (id [_] "1")
+
+        (uptimeInMillis [_] 0)
+        (locale [_] nil)
+        (startTime [_] 0)
+        (kill9 [_] )
+        (start [this _] )
+        (stop [this] )
+        (acquireDbPool [_ gid] nil)
+        (acquireDbAPI [_ gid] nil)
+        (dftDbPool [_] nil)
+        (dftDbAPI [_] nil)
+        (child [_ sid])
+        (hasChild [_ sid])
+        (core [_] nil)
+        (config [_] {})
+        (dispose [this]))
+      {:typeid ::Execvisor})))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn- mockPluglet "" ^Pluglet []
+  (let [impl (muble<>)
+        exe (mkexe)]
+    (with-meta
+      (reify Pluglet
+        (isEnabled [this] true)
+        (version [_] "1")
+        (config [_] {})
+        (spec [_] {})
+        (server [this] exe)
+        (getx [_] impl)
+        (hold [_ trig millis])
+        (id [_] "?")
+        (dispose [_])
+        (init [this cfg0])
+        (start [this arg])
+        (stop [_]))
+      {:typeid ::dummy})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -63,7 +119,7 @@
       :enabled true
       :minp 2
       :maxp 2
-      :engine  "czlab.test.loki.test/testEngine"}
+      :engine  :czlab.test.loki.test/testEngine}
     :status true
     :uri "/arena/test"
     :image "ui/catalog.png"}})
@@ -151,12 +207,12 @@
   (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
-                                 :userid  "u1"
-                                 :password "p1"}})
+                                 :principal  "u1"
+                                 :credential "p1"}})
             t (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
-                                 :userid  "u2"
-                                 :password "p2"}})
+                                 :principal  "u2"
+                                 :credential "p2"}})
             r1 (some-> s (.room ))
             r2 (some-> t (.room ))
             ok
@@ -175,8 +231,8 @@
   (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
-                                 :userid  "u3"
-                                 :password "p3"}})
+                                 :principal  "u3"
+                                 :credential "p3"}})
             ^GameRoom r (some-> s (.room ))
             ok
             (and (some? r)
@@ -189,16 +245,16 @@
   (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
-                                 :userid  "u4"
-                                 :password "p4"}})
+                                 :principal  "u4"
+                                 :credential "p4"}})
             ^GameRoom r (some-> s (.room ))
             na (not (.canActivate r))
             nok (not (.isActive r))
             t (doJoinReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :roomid (some-> r (.id))
-                                 :userid  "u5"
-                                 :password "p5"}})
+                                 :principal  "u5"
+                                 :credential "p5"}})
             r2 (some-> t (.room))]
         (and (some? r)
              (some? r2)
@@ -210,8 +266,6 @@
              (== 0 (countFreeRooms gid))
              (do->true (clearGameRooms gid))
              (do->true (clearFreeRooms gid)))))
-
-
 
   (is (string? "That's all folks!")))
 

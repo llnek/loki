@@ -172,7 +172,7 @@
   "" ^Subr [^Session ps]
 
   (reify Subr
-    (eventType [_] Events/LOCAL)
+    (eventType [_] Events/PUBLIC)
     (session [_] ps)
     (receive [me evt]
       (if (== (.eventType me)
@@ -192,7 +192,7 @@
 
   (let [ctr (.server ^Pluglet source)
         crt (.cljrt ctr)
-        engObj (.callEx crt (.engineClass gameObj)
+        engObj (.callEx crt (strKW (.engineClass gameObj))
                             (object-array [(atom {}) (ref {})]))
         impl (muble<> {:shutting? false})
         pcount (AtomicInteger.)
@@ -260,18 +260,18 @@
 
       (send [this msg]
         (condp = (:type msg)
-          Events/UNIT (if-some [^Sendable
+          Events/PRIVATE (if-some [^Sendable
                                 s (:context msg)]
                         (.send s msg))
-          Events/LOCAL (.broadcast this msg)
+          Events/PUBLIC (.broadcast this msg)
           (log/warn "room.sendmsg: unhandled event %s" msg)))
 
       (receive [this evt]
         (let [eng (.engine this)]
           (log/debug "room got an event %s" evt)
           (condp = (:type evt)
-            Events/LOCAL (.broadcast this evt)
-            Events/UNIT (.update eng evt)
+            Events/PUBLIC (.broadcast this evt)
+            Events/PRIVATE (.update eng evt)
             (log/warn "room.onmsg: unhandled event %s" evt))))
 
       Object
@@ -316,12 +316,12 @@
          src {:room (.id room)
               :game (.id game)
               :pnum (.number pss)}
-         evt (eventObj<> Events/UNIT Events/PLAYREQ_OK src)]
+         evt (eventObj<> Events/PRIVATE Events/PLAYREQ_OK src)]
         (.bind pss arg)
         (setAKey ch PSSN pss)
         (log/debug "replying back to user: %s" evt)
         (replyEvent ch evt)
-        (->> (eventObj<> Events/LOCAL
+        (->> (eventObj<> Events/PUBLIC
                          Events/PLAYER_JOINED
                          {:pnum (.number pss)
                           :puid (.id plyr)})
@@ -350,7 +350,7 @@
             src {:room (.id room)
                  :game (.id game)
                  :pnum (.number pss)}
-            evt (eventObj<> Events/UNIT
+            evt (eventObj<> Events/PRIVATE
                             Events/JOINREQ_OK src)]
         (.bind pss arg)
         (setAKey ch PSSN pss)

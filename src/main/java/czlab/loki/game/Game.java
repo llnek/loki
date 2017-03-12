@@ -32,7 +32,7 @@ public interface Game extends Identifiable, Nameable {
 
   /**
    */
-  public String engineClass();
+  public Object engineClass();
 
   /**
    */
