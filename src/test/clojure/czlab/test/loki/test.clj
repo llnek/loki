@@ -29,7 +29,7 @@
             WebSocketFrame
             TextWebSocketFrame]
            [czlab.loki.game GameRoom Engine]
-           [czlab.wabbit.base Cljshim]
+           [czlab.basal Cljrt]
            [czlab.wabbit.sys Execvisor]
            [czlab.wabbit.ctl Pluglet]
            [czlab.loki.mock MockEngine]
@@ -48,7 +48,7 @@
 ;;
 (defn- mkexe "" []
   (let
-    [rts (Cljshim/newrt (getCldr) "mock")
+    [rts (Cljrt/newrt (getCldr) "mock")
      impl (muble<>)]
     (with-meta
       (reify
