@@ -8,7 +8,7 @@
  * You must not remove this notice, or any other, from this software.
  */
 
-package czlab.loki.event;
+package czlab.loki.net;
 
 import czlab.loki.core.Session;
 import java.io.Closeable;

@@ -21,12 +21,12 @@
         [czlab.basal.io]
         [czlab.basal.str]
         [czlab.loki.system.util]
-        [czlab.loki.event.core]
+        [czlab.loki.net.core]
         [czlab.loki.game.reqs])
 
   (:import [czlab.flux.wflow Workstream Job]
            [czlab.wabbit.plugs.io WsockMsg]
-           [czlab.loki.event Events]
+           [czlab.loki.net Events]
            [czlab.loki.core Session]
            [czlab.jasal XData]
            [java.io File]

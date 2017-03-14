@@ -18,8 +18,8 @@
         [czlab.basal.str]
         [czlab.basal.io]
         [czlab.loki.system.util]
-        [czlab.loki.event.core]
-        [czlab.loki.event.disp])
+        [czlab.loki.net.core]
+        [czlab.loki.net.disp])
 
   (:import [io.netty.channel Channel]
            [czlab.loki.game
@@ -30,7 +30,7 @@
             Player
             Session]
            [czlab.jasal Hierarchial]
-           [czlab.loki.event Events]
+           [czlab.loki.net Events]
            [czlab.loki.net MsgSender]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

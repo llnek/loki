@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.event.disp
+  czlab.loki.net.disp
 
   (:require [czlab.basal.logging :as log]
             [clojure.core.async
@@ -22,13 +22,13 @@
               <!
               go-loop]])
 
-  (:use [czlab.loki.event.core]
+  (:use [czlab.loki.net.core]
         [czlab.basal.core]
         [czlab.basal.io]
         [czlab.basal.str])
 
-  (:import [czlab.loki.event Subr PubSub]
-           [czlab.loki.net TcpSender]
+  (:import [czlab.loki.net Subr PubSub]
+           [czlab.loki.net MsgSender]
            [io.netty.channel Channel]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37,11 +37,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn tcpSender<>
-  "" ^TcpSender [^Channel ch]
+  "" ^MsgSender [^Channel ch]
 
-  (reify TcpSender
+  (reify MsgSender
     (send [_ evt]
       (.writeAndFlush ch (encodeEvent evt)))
+    (isReliable [_] true)
+    (socket [_] ch)
     (close [_]
       (log/debug "closing tcp: %s" ch)
       (closeQ ch))))

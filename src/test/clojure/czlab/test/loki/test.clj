@@ -13,7 +13,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as cs])
 
-  (:use [czlab.loki.event.core]
+  (:use [czlab.loki.net.core]
         [czlab.loki.game.core]
         [czlab.loki.game.player]
         [czlab.loki.game.room]
@@ -32,9 +32,8 @@
            [czlab.basal Cljrt]
            [czlab.wabbit.sys Execvisor]
            [czlab.wabbit.ctl Pluglet]
-           [czlab.loki.mock MockEngine]
            [czlab.loki.core Room]
-           [czlab.loki.event Events]))
+           [czlab.loki.net Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -43,6 +42,23 @@
   evt-json
   "{\"type\" : 100, \"status\": 200, \"code\":111, \"body\": { \"a\" : 911 }}")
 (def ^:private evt-body {:a 911})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn- mockEngine "" ^Engine []
+  (reify Engine
+    (init [_ _])
+    (ready [_ r])
+    (restart [_])
+    (start [_] )
+    (restart [_ _])
+    (start [_ _])
+    (startRound [_ _])
+    (endRound [_ _])
+    (stop [_])
+    (update [_ _])
+    (state [_])
+    (container [_] )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -126,10 +142,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn testEngine
-  ""
-  ^Engine
-  [a b] (MockEngine.))
+(defn testEngine "" ^Engine [a b] (mockEngine))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

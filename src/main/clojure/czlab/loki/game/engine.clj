@@ -14,13 +14,13 @@
   (:require [czlab.basal.logging :as log]
             [clojure.java.io :as io])
 
-  (:use [czlab.loki.event.core]
+  (:use [czlab.loki.net.core]
         [czlab.basal.core]
         [czlab.basal.str])
 
   (:import [czlab.loki.game Engine Game Arena]
            [czlab.loki.core Session]
-           [czlab.loki.event Events]))
+           [czlab.loki.net Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)

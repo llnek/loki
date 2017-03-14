@@ -13,6 +13,21 @@ package czlab.loki.net;
 /**
  * @author Kenneth Leung
  */
-public interface TcpSender extends MsgSender {
+public class EventError extends Exception {
+
+  private static final long serialVersionUID = 1L;
+
+  /**
+   */
+  public EventError(String msg) {
+    super(msg);
+  }
+
+  /**
+   */
+  public EventError(String msg, Exception e) {
+    super(msg,e);
+  }
 
 }
+

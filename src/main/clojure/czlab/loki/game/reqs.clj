@@ -18,7 +18,7 @@
         [czlab.basal.core]
         [czlab.basal.str]
         [czlab.basal.io]
-        [czlab.loki.event.core]
+        [czlab.loki.net.core]
         [czlab.loki.game.room]
         [czlab.loki.game.core]
         [czlab.loki.game.player])
@@ -27,7 +27,7 @@
            [czlab.wabbit.ctl Pluglet]
            [czlab.jasal Muble I18N XData]
            [io.netty.channel Channel]
-           [czlab.loki.event Events]
+           [czlab.loki.net Events]
            [czlab.loki.game Game]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -20,8 +20,8 @@
         [czlab.basal.str]
         [czlab.basal.io]
         [czlab.loki.system.util]
-        [czlab.loki.event.core]
-        [czlab.loki.event.disp]
+        [czlab.loki.net.core]
+        [czlab.loki.net.disp]
         [czlab.loki.game.session])
 
   (:import [java.util.concurrent.atomic AtomicInteger]
@@ -37,7 +37,7 @@
             Room
             Player
             Session]
-           [czlab.loki.event Events Subr PubSub]))
+           [czlab.loki.net Events Subr PubSub]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)

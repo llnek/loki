@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.event.core
+  czlab.loki.net.core
 
   (:require [czlab.basal.logging :as log])
 
@@ -22,7 +22,7 @@
             TextWebSocketFrame]
            [io.netty.channel Channel]
            [clojure.lang APersistentMap]
-           [czlab.loki.event Events EventError]))
+           [czlab.loki.net Events EventError]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
