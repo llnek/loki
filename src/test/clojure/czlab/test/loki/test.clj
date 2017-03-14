@@ -6,19 +6,20 @@
 ;; the terms of this license.
 ;; You must not remove this notice, or any other, from this software.
 
-(ns
+(ns ^:{:doc ""
+       :author "Kenneth Leung"}
 
   czlab.test.loki.test
 
   (:require [clojure.java.io :as io]
             [clojure.string :as cs])
 
-  (:use [czlab.loki.net.core]
-        [czlab.loki.game.core]
+  (:use [czlab.loki.game.session]
         [czlab.loki.game.player]
+        [czlab.loki.game.core]
         [czlab.loki.game.room]
         [czlab.loki.game.reqs]
-        [czlab.loki.game.session]
+        [czlab.loki.net.core]
         [czlab.basal.format]
         [czlab.basal.meta]
         [czlab.basal.core]
@@ -26,13 +27,12 @@
         [clojure.test])
 
   (:import [io.netty.handler.codec.http.websocketx
-            WebSocketFrame
-            TextWebSocketFrame]
+            WebSocketFrame TextWebSocketFrame]
            [czlab.loki.game GameRoom Engine]
-           [czlab.basal Cljrt]
            [czlab.wabbit.sys Execvisor]
            [czlab.wabbit.ctl Pluglet]
            [czlab.loki.core Room]
+           [czlab.basal Cljrt]
            [czlab.loki.net Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -62,10 +62,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- mkexe "" []
-  (let
-    [rts (Cljrt/newrt (getCldr) "mock")
-     impl (muble<>)]
+(defn- mockExec "" []
+  (let [rts (Cljrt/newrt)
+        impl (muble<>)]
     (with-meta
       (reify
         Execvisor
@@ -100,7 +99,7 @@
 ;;
 (defn- mockPluglet "" ^Pluglet []
   (let [impl (muble<>)
-        exe (mkexe)]
+        exe (mockExec)]
     (with-meta
       (reify Pluglet
         (isEnabled [this] true)
@@ -187,8 +186,7 @@
              (== 111 (:code evt))
              (== 911 (get-in evt [:body :a])))))
 
-  (is (let [g (lookupGame "game-1")]
-        (some? g)))
+  (is (some? (lookupGame "game-1")))
 
   (is (let [c1 (lookupPlayer "u1" "p1")
             c2 (lookupPlayer "u1")
@@ -226,8 +224,8 @@
                           :body {:gameid gid
                                  :principal  "u2"
                                  :credential "p2"}})
-            r1 (some-> s (.room ))
-            r2 (some-> t (.room ))
+            r1 (some-> s .room )
+            r2 (some-> t .room )
             ok
             (and (some? r1)
                  (some? r2)
