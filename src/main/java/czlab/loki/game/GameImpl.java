@@ -15,7 +15,7 @@ import czlab.loki.core.Session;
 /**
  * @author Kenneth Leung
  */
-public interface ArenaDelegate {
+public interface GameImpl {
 
   /**
    */

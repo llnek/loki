@@ -19,7 +19,7 @@ import czlab.jasal.Initable;
 /**
  * @author kenl
  */
-public interface ArenaImpl extends Initable, Startable, Restartable, Disposable {
+public interface Arena extends Initable, Startable, Restartable, Disposable {
 
   //life cycle of engine
   //1. initialize

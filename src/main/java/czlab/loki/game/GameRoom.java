@@ -23,11 +23,11 @@ public interface GameRoom extends Room {
 
   /**
    */
-  public ArenaImpl arena();
+  public GameMeta game();
 
   /**
    */
-  public Game game();
+  public Arena arena();
 
   /**
    */

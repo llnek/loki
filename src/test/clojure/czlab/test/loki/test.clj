@@ -14,8 +14,8 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as cs])
 
-  (:use [czlab.loki.game.session]
-        [czlab.loki.game.player]
+  (:use [czlab.loki.core.session]
+        [czlab.loki.core.player]
         [czlab.loki.game.core]
         [czlab.loki.game.room]
         [czlab.loki.game.reqs]
@@ -26,7 +26,7 @@
         [czlab.basal.str]
         [clojure.test])
 
-  (:import [czlab.loki.game GameRoom ArenaDelegate]
+  (:import [czlab.loki.game GameRoom GameImpl]
            [io.netty.handler.codec.http.websocketx
             WebSocketFrame TextWebSocketFrame]
            [czlab.wabbit.sys Execvisor]
@@ -45,8 +45,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- mockDelegate "" ^ArenaDelegate []
-  (reify ArenaDelegate
+(defn- mockDelegate "" ^GameImpl []
+  (reify GameImpl
     (onEvent [_ _ _])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -123,14 +123,14 @@
       :enabled true
       :minp 2
       :maxp 2
-      :arena  :czlab.test.loki.test/testArena}
+      :impl  :czlab.test.loki.test/testArena}
     :status true
     :uri "/arena/test"
     :image "ui/catalog.png"}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn testArena "" ^ArenaDelegate [_ _] (mockDelegate))
+(defn testArena "" ^GameImpl [_ _] (mockDelegate))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

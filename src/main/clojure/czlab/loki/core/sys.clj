@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.system.core
+  czlab.loki.core.sys
 
   (:require [czlab.basal.logging :as log]
             [clojure.java.io :as io])
@@ -20,7 +20,7 @@
         [czlab.basal.core]
         [czlab.basal.io]
         [czlab.basal.str]
-        [czlab.loki.system.util]
+        [czlab.loki.core.util]
         [czlab.loki.net.core]
         [czlab.loki.game.reqs])
 

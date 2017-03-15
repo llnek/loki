@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.game.player
+  czlab.loki.core.player
 
   (:require [czlab.basal.logging :as log])
 
@@ -17,8 +17,7 @@
         [czlab.basal.io]
         [czlab.basal.str])
 
-  (:import [czlab.loki.core Room Player Session]
-           [czlab.loki.game Game]))
+  (:import [czlab.loki.core Player Session]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)

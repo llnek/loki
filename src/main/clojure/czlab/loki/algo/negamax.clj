@@ -23,7 +23,7 @@
   (:use [czlab.basal.core]
         [czlab.basal.str])
 
-  (:import [czlab.loki.game Game GameRoom Board]
+  (:import [czlab.loki.game GameMeta GameRoom Board]
            [czlab.loki.core Player Session]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

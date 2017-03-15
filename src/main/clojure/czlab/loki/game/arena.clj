@@ -18,7 +18,7 @@
         [czlab.basal.core]
         [czlab.basal.str])
 
-  (:import [czlab.loki.game ArenaDelegate Game ArenaImpl]
+  (:import [czlab.loki.game GameImpl GameMeta Arena]
            [czlab.loki.core Session]
            [czlab.loki.net Events]))
 
@@ -33,10 +33,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn arena<>
-  "" ^ArenaImpl [^ArenaDelegate delegate]
+  "" ^Arena [^GameImpl delegate]
 
   (let [state (atom {})]
-    (reify ArenaImpl
+    (reify Arena
       (init [_ sessions]
         (swap! state
                assoc
@@ -58,7 +58,7 @@
         (log/debug "engine#restart() called"))
       (restart [_] (.restart _ nil))
       (start [_ arg]
-        (log/debug "engine#start called"))
+        (log/info "engine#start called"))
       (start [_] (.start _ nil))
       (startRound [this arg]
         (->> {:round (:round arg)}

@@ -14,7 +14,6 @@
 
   :plugins [[cider/cider-nrepl "0.14.0"]
             [lein-cprint "1.2.0"]
-            [lein-junit "1.1.8"]
             [lein-javadoc "0.3.0"]
             [lein-codox "0.10.3"]]
 
@@ -33,10 +32,9 @@
   :coordinate! "czlab"
   :omit-source true
 
-  :java-source-paths ["src/main/java" "src/test/java"]
+  :java-source-paths ["src/main/java"]
   :source-paths ["src/main/clojure"]
   :test-paths ["src/test/clojure"]
-  ;;:resource-paths ["src/main/resources"]
 
   :jvm-opts ["-Dlog4j.configurationFile=file:attic/log4j2.xml"]
   :javac-options ["-source" "8"

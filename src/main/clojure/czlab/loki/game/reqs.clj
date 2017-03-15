@@ -21,14 +21,14 @@
         [czlab.loki.net.core]
         [czlab.loki.game.room]
         [czlab.loki.game.core]
-        [czlab.loki.game.player])
+        [czlab.loki.core.player])
 
   (:import [czlab.loki.core Room Player Session]
            [czlab.wabbit.ctl Pluglet]
            [czlab.jasal Muble I18N XData]
            [io.netty.channel Channel]
            [czlab.loki.net Events]
-           [czlab.loki.game Game]))
+           [czlab.loki.game GameMeta]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)

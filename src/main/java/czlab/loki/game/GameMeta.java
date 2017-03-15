@@ -16,7 +16,7 @@ import czlab.jasal.Nameable;
 /**
  * @author Kenneth Leung
  */
-public interface Game extends Identifiable, Nameable {
+public interface GameMeta extends Identifiable, Nameable {
 
   /**
    */
@@ -24,7 +24,7 @@ public interface Game extends Identifiable, Nameable {
 
   /**
    */
-  public Object delegateClass();
+  public Object implClass();
 
   /**
    */

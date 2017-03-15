@@ -19,24 +19,19 @@
         [czlab.basal.core]
         [czlab.basal.str]
         [czlab.basal.io]
-        [czlab.loki.system.util]
+        [czlab.loki.core.util]
         [czlab.loki.net.core]
         [czlab.loki.net.disp]
         [czlab.loki.game.arena]
-        [czlab.loki.game.session])
+        [czlab.loki.core.session])
 
   (:import [java.util.concurrent.atomic AtomicInteger]
+           [czlab.loki.core Room Player Session]
            [czlab.jasal Sendable Dispatchable]
+           [czlab.loki.game GameMeta GameRoom]
            [czlab.wabbit.ctl Pluglet]
            [io.netty.channel Channel]
            [clojure.lang Keyword]
-           [czlab.loki.game
-            Game
-            GameRoom]
-           [czlab.loki.core
-            Room
-            Player
-            Session]
            [czlab.loki.net Events Subr PubSub]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -152,7 +147,7 @@
        r)))
 
   ([game]
-   (let [gid (.id ^Game game)
+   (let [gid (.id ^GameMeta game)
          gm (@free-rooms gid)]
     (when-some
       [^GameRoom r (first (vals gm))]
@@ -188,13 +183,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- gameRoom<>
-  "" ^GameRoom [^Game gameObj {:keys [source]}]
+  "" ^GameRoom [^GameMeta gameObj {:keys [source]}]
 
   (let [impl (muble<> {:shutting? false})
         ctr (.server ^Pluglet source)
         pcount (AtomicInteger.)
         crt (.cljrt ctr)
         sessions (atom {})
+        latch (atom {})
         disp (dispatcher<>)
         rid (uid<>)
         created (now<>)]
@@ -243,7 +239,7 @@
 
       (open [this]
         (let [a (-> (.callEx crt
-                             (strKW (.delegateClass gameObj))
+                             (strKW (.implClass gameObj))
                              (vargs* Object (atom {}) (ref {})))
                     (arena<> ))
               sss (sort-by #(.number ^Session %)
@@ -256,7 +252,8 @@
             (.addHandler this (localSubr<> s)))
           (doto a
             (.init  sss)
-            (.ready  this))))
+            (.ready  this))
+          (reset! latch @sessions)))
 
       (removeHandler [_ h] (.unsubscribe disp h))
       (addHandler [_ h] (.subscribe disp h))
@@ -270,12 +267,23 @@
           (log/warn "room.sendmsg: unhandled event %s" msg)))
 
       (receive [this evt]
-        (let [eng (.arena this)]
-          (log/debug "room got an event %s" evt)
-          (condp = (:type evt)
-            Events/PUBLIC (.broadcast this evt)
-            Events/PRIVATE (.update eng evt)
-            (log/warn "room.onmsg: unhandled event %s" evt))))
+        (let [{:keys [context type code]}
+              evt
+              eng (.arena this)]
+          (when (.isOpen this)
+            (log/debug "room got an event %s" evt)
+            (cond
+              (empty? @latch)
+              (condp = type
+                Events/PUBLIC (.broadcast this evt)
+                Events/PRIVATE (.update eng evt)
+                (log/warn "room.onmsg: unhandled event %s" evt))
+              (and (= Events/PRIVATE type)
+                   (= Events/STARTED code))
+              (do
+                (swap! latch
+                       dissoc (.id ^Session context))
+                (if (empty? @latch) (.start eng)))))))
 
       Object
 
@@ -293,7 +301,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn newFreeRoom
-  "" ^Session [^Game game ^Player py options]
+  "" ^Session [^GameMeta game ^Player py options]
 
   (let [room (gameRoom<> game options)]
     (log/debug "created a new play room: %s" (.id room))
@@ -302,7 +310,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn openRoom
-  "" ^Session [^Game game ^Player plyr arg]
+  "" ^Session [^GameMeta game ^Player plyr arg]
 
   (let [pss (some-> (lookupFreeRoom game)
                     (.connect plyr))

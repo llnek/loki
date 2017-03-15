@@ -17,7 +17,7 @@
   (:use [czlab.basal.core]
         [czlab.basal.str])
 
-  (:import [czlab.loki.game Game]))
+  (:import [czlab.loki.game GameMeta]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -38,14 +38,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn lookupGame
-  "Find game from registry" ^Game [gameid]
+  "Find game from registry" ^GameMeta [gameid]
 
   (when-some [g (*game-rego* (keyword gameid))]
-    (let [{:keys [enabled? minp maxp arena]
+    (let [{:keys [enabled? minp maxp impl]
            :or {minp 1 maxp 1 engine ""}}
           (:network g)]
       (log/debug "found game with id = %s" gameid)
-      (reify Game
+      (reify GameMeta
         (supportMultiPlayers [_] (boolean enabled?))
         (maxPlayers [_] (if (spos? maxp)
                           (int maxp)
@@ -54,7 +54,7 @@
                           (int minp)
                           (int 1)))
         (name [_] (:name g))
-        (delegateClass [_] arena)
+        (implClass [_] impl)
         (gist [_] g)
         (id [_] gameid)
         (unload [_] )))))
