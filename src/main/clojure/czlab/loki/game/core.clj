@@ -41,7 +41,7 @@
   "Find game from registry" ^Game [gameid]
 
   (when-some [g (*game-rego* (keyword gameid))]
-    (let [{:keys [enabled? minp maxp engine]
+    (let [{:keys [enabled? minp maxp arena]
            :or {minp 1 maxp 1 engine ""}}
           (:network g)]
       (log/debug "found game with id = %s" gameid)
@@ -54,7 +54,7 @@
                           (int minp)
                           (int 1)))
         (name [_] (:name g))
-        (engineClass [_] engine)
+        (delegateClass [_] arena)
         (gist [_] g)
         (id [_] gameid)
         (unload [_] )))))

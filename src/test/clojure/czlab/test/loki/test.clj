@@ -6,8 +6,8 @@
 ;; the terms of this license.
 ;; You must not remove this notice, or any other, from this software.
 
-(ns ^:{:doc ""
-       :author "Kenneth Leung"}
+(ns ^{:doc ""
+      :author "Kenneth Leung"}
 
   czlab.test.loki.test
 
@@ -26,9 +26,9 @@
         [czlab.basal.str]
         [clojure.test])
 
-  (:import [io.netty.handler.codec.http.websocketx
+  (:import [czlab.loki.game GameRoom ArenaDelegate]
+           [io.netty.handler.codec.http.websocketx
             WebSocketFrame TextWebSocketFrame]
-           [czlab.loki.game GameRoom Engine]
            [czlab.wabbit.sys Execvisor]
            [czlab.wabbit.ctl Pluglet]
            [czlab.loki.core Room]
@@ -45,20 +45,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- mockEngine "" ^Engine []
-  (reify Engine
-    (init [_ _])
-    (ready [_ r])
-    (restart [_])
-    (start [_] )
-    (restart [_ _])
-    (start [_ _])
-    (startRound [_ _])
-    (endRound [_ _])
-    (stop [_])
-    (update [_ _])
-    (state [_])
-    (container [_] )))
+(defn- mockDelegate "" ^ArenaDelegate []
+  (reify ArenaDelegate
+    (onEvent [_ _ _])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -134,14 +123,14 @@
       :enabled true
       :minp 2
       :maxp 2
-      :engine  :czlab.test.loki.test/testEngine}
+      :arena  :czlab.test.loki.test/testArena}
     :status true
     :uri "/arena/test"
     :image "ui/catalog.png"}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn testEngine "" ^Engine [a b] (mockEngine))
+(defn testArena "" ^ArenaDelegate [_ _] (mockDelegate))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -224,15 +213,15 @@
                           :body {:gameid gid
                                  :principal  "u2"
                                  :credential "p2"}})
-            r1 (some-> s .room )
-            r2 (some-> t .room )
+            r1 (some-> s .room)
+            r2 (some-> t .room)
             ok
             (and (some? r1)
                  (some? r2)
                  (identical? r1 r2)
                  (== 1 (countGameRooms gid))
                  (== 0 (countFreeRooms gid))
-                 (.isActive r1))
+                 (.isOpen r1))
             _ (clearFreeRooms gid)
             _ (clearGameRooms gid)]
         (and ok
@@ -244,11 +233,11 @@
                           :body {:gameid gid
                                  :principal  "u3"
                                  :credential "p3"}})
-            ^GameRoom r (some-> s (.room ))
+            ^GameRoom r (some-> s .room)
             ok
             (and (some? r)
                  (== 1 (countFreeRooms gid))
-                 (not (.canActivate r)))
+                 (not (.canOpen r)))
             _ (removeFreeRoom gid (.id r))]
         (and ok
              (== 0 (countFreeRooms gid)))))
@@ -258,21 +247,21 @@
                           :body {:gameid gid
                                  :principal  "u4"
                                  :credential "p4"}})
-            ^GameRoom r (some-> s (.room ))
-            na (not (.canActivate r))
-            nok (not (.isActive r))
+            ^GameRoom r (some-> s .room)
+            na (not (.canOpen r))
+            nok (not (.isOpen r))
             t (doJoinReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :roomid (some-> r (.id))
                                  :principal  "u5"
                                  :credential "p5"}})
-            r2 (some-> t (.room))]
+            r2 (some-> t .room)]
         (and (some? r)
              (some? r2)
              na
              nok
              (identical? r r2)
-             (.isActive r2)
+             (.isOpen r2)
              (== 1 (countGameRooms gid))
              (== 0 (countFreeRooms gid))
              (do->true (clearGameRooms gid))

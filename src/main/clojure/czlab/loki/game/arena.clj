@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.game.engine
+  czlab.loki.game.arena
 
   (:require [czlab.basal.logging :as log]
             [clojure.java.io :as io])
@@ -18,7 +18,7 @@
         [czlab.basal.core]
         [czlab.basal.str])
 
-  (:import [czlab.loki.game Engine Game Arena]
+  (:import [czlab.loki.game ArenaDelegate Game ArenaImpl]
            [czlab.loki.core Session]
            [czlab.loki.net Events]))
 
@@ -32,56 +32,33 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn engine<>
-  ""
-  [^Arena arenaObj
-   {:keys [onRestart
-           onStart
-           onStop
-           onUpdate
-           onDispose]
-    :or {onRestart dummy2
-         onStart dummy2
-         onStop dummy1
-         onUpdate dummy2
-         onDispose dummy1}
-    :as impl}]
-  {:pre [(some? arenaObj)]}
-  (let
-    [state (atom {})]
-    (reify Engine
-      (init [_ players]
-        (let [sessionids
-              (preduce<map>
-                #(let [^Session s %2]
-                   (assoc! %1 (.id s) s))
-                players)
-              playerids
-              (preduce<map>
-                #(let [^Session s %2]
-                  (assoc! %1
-                          (.. s player id)
-                          (.number s)))
-                players)]
-          (swap! state
-                 assoc
-                 :playerids playerids
-                 :sessions sessionids
-                 :players players )))
+(defn arena<>
+  "" ^ArenaImpl [^ArenaDelegate delegate]
+
+  (let [state (atom {})]
+    (reify ArenaImpl
+      (init [_ sessions]
+        (swap! state
+               assoc
+               :sids (preduce<map> #(assoc! %1
+                                            (.id ^Session %2) %2) sessions)
+               :pids (preduce<map>
+                       #(assoc! %1
+                                (.. ^Session %2 player id)
+                                (. ^Session %2 number)) sessions)
+               :players sessions))
       (ready [this room]
         (log/debug "engine#ready() called")
         (swap! state assoc :room room)
-        (->> (:playerids @state)
+        (->> (:pids @state)
              (eventObj<> Events/PUBLIC
                          Events/START)
              (.send (.container this))))
       (restart [_ arg]
-        (log/debug "engine#restart() called")
-        (onRestart @state arg))
+        (log/debug "engine#restart() called"))
       (restart [_] (.restart _ nil))
       (start [_ arg]
-        (log/debug "engine#start called")
-        (onStart @state arg))
+        (log/debug "engine#start called"))
       (start [_] (.start _ nil))
       (startRound [this arg]
         (->> {:round (:round arg)}
@@ -94,15 +71,15 @@
                          Events/END_ROUND)
              (.send (.container this))))
       (stop [this]
-        (->> (eventObj<> Events/PUBLIC Events/STOP nil)
-             (.send (.container this)))
-        (onStop @state))
+        (->> (eventObj<> Events/PUBLIC
+                         Events/STOP nil)
+             (.send (.container this))))
       (update [this evt]
-        (.onEvent arenaObj
-                  ^Session (:context evt)
+        (.onEvent delegate
+                  ^Session
+                  (:context evt)
                   (dissoc evt :context)))
-      (dispose [_]
-        (onDispose @state))
+      (dispose [_])
       (state [_] @state)
       (container [_] (:room @state)))))
 

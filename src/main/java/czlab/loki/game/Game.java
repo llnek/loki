@@ -24,15 +24,15 @@ public interface Game extends Identifiable, Nameable {
 
   /**
    */
+  public Object delegateClass();
+
+  /**
+   */
   public int maxPlayers();
 
   /**
    */
   public int minPlayers();
-
-  /**
-   */
-  public Object engineClass();
 
   /**
    */

@@ -47,7 +47,7 @@ public interface Room extends Identifiable
 
   /**
    */
-  public boolean isActive();
+  public boolean isOpen();
 
   /**
    */

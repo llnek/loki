@@ -10,6 +10,7 @@
 
 package czlab.loki.game;
 
+import czlab.loki.core.Session;
 import czlab.jasal.Restartable;
 import czlab.jasal.Disposable;
 import czlab.jasal.Startable;
@@ -18,7 +19,13 @@ import czlab.jasal.Initable;
 /**
  * @author kenl
  */
-public interface Engine extends Initable, Startable, Restartable, Disposable {
+public interface ArenaImpl extends Initable, Startable, Restartable, Disposable {
+
+  //life cycle of engine
+  //1. initialize
+  //2. ready
+  //3. start/restart
+  public Object ready(GameRoom room);
 
   /**
    */
@@ -31,12 +38,6 @@ public interface Engine extends Initable, Startable, Restartable, Disposable {
   /**
    */
   public void update(Object event);
-
-  //life cycle of engine
-  //1. initialize
-  //2. ready
-  //3. start/restart
-  public Object ready(GameRoom room);
 
   /**
    */

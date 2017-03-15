@@ -19,7 +19,11 @@ public interface GameRoom extends Room {
 
   /**
    */
-  public Engine engine();
+  public boolean canOpen();
+
+  /**
+   */
+  public ArenaImpl arena();
 
   /**
    */
@@ -27,11 +31,7 @@ public interface GameRoom extends Room {
 
   /**
    */
-  public boolean canActivate();
-
-  /**
-   */
-  public void activate();
+  public void open();
 
 }
 

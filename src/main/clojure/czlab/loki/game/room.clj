@@ -22,6 +22,7 @@
         [czlab.loki.system.util]
         [czlab.loki.net.core]
         [czlab.loki.net.disp]
+        [czlab.loki.game.arena]
         [czlab.loki.game.session])
 
   (:import [java.util.concurrent.atomic AtomicInteger]
@@ -30,7 +31,6 @@
            [io.netty.channel Channel]
            [clojure.lang Keyword]
            [czlab.loki.game
-            Engine
             Game
             GameRoom]
            [czlab.loki.core
@@ -190,12 +190,10 @@
 (defn- gameRoom<>
   "" ^GameRoom [^Game gameObj {:keys [source]}]
 
-  (let [ctr (.server ^Pluglet source)
-        crt (.cljrt ctr)
-        engObj (.callEx crt (strKW (.engineClass gameObj))
-                            (object-array [(atom {}) (ref {})]))
-        impl (muble<> {:shutting? false})
+  (let [impl (muble<> {:shutting? false})
+        ctr (.server ^Pluglet source)
         pcount (AtomicInteger.)
+        crt (.cljrt ctr)
         sessions (atom {})
         disp (dispatcher<>)
         rid (uid<>)
@@ -221,16 +219,16 @@
           ps))
 
       (isShuttingDown [_] (boolean (.getv impl :shutting?)))
-      (isActive [_] (boolean (.getv impl :active?)))
+      (isOpen [_] (boolean (.getv impl :active?)))
 
-      (canActivate [this]
-        (and (not (.isActive this))
+      (canOpen [this]
+        (and (not (.isOpen this))
              (>= (.countPlayers this)
                  (.minPlayers gameObj))))
 
       (broadcast [_ evt] (.publish disp evt))
 
-      (engine [_] engObj)
+      (arena [_] (.getv impl :arena))
 
       (game [_] gameObj)
 
@@ -243,15 +241,20 @@
           (closeQ v))
         (reset! sessions {}))
 
-      (activate [this]
-        (let [eng (.engine this)
+      (open [this]
+        (let [a (-> (.callEx crt
+                             (strKW (.delegateClass gameObj))
+                             (vargs* Object (atom {}) (ref {})))
+                    (arena<> ))
               sss (sort-by #(.number ^Session %)
                            (vals @sessions))]
           (log/debug "activating room %s" rid)
-          (.setv impl :active? true)
+          (doto impl
+            (.setv :active? true)
+            (.setv :arena a))
           (doseq [s sss]
             (.addHandler this (localSubr<> s)))
-          (doto eng
+          (doto a
             (.init  sss)
             (.ready  this))))
 
@@ -267,7 +270,7 @@
           (log/warn "room.sendmsg: unhandled event %s" msg)))
 
       (receive [this evt]
-        (let [eng (.engine this)]
+        (let [eng (.arena this)]
           (log/debug "room got an event %s" evt)
           (condp = (:type evt)
             Events/PUBLIC (.broadcast this evt)
@@ -326,12 +329,12 @@
                          {:pnum (.number pss)
                           :puid (.id plyr)})
              (.broadcast room))
-        (if (.canActivate room)
+        (if (.canOpen room)
           (do
-            (log/debug "room has enough players, can activate")
+            (log/debug "room has enough players, can open")
             (addGameRoom room)
-            (log/debug "room.canActivate = true")
-            (.activate room))
+            (log/debug "room.canOpen = true")
+            (.open room))
           (addFreeRoom room))))
     pss))
 
@@ -356,13 +359,13 @@
         (setAKey ch PSSN pss)
         (replyEvent ch evt)
         (log/debug "replying back to user: %s" evt)
-        (when-not (.isActive room)
-          (if (.canActivate room)
+        (when-not (.isOpen room)
+          (if (.canOpen room)
             (do
-              (log/debug "room has enough players, can activate")
+              (log/debug "room has enough players, can open")
               (addGameRoom room)
-              (log/debug "room.canActivate = true")
-              (.activate room))
+              (log/debug "room.canOpen = true")
+              (.open room))
             (addFreeRoom room)))
         pss))))
 

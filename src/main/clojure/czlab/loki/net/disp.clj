@@ -41,7 +41,7 @@
 
   (reify MsgSender
     (send [_ evt]
-      (.writeAndFlush ch (encodeEvent evt)))
+      (some-> ch (.writeAndFlush (encodeEvent evt))))
     (isReliable [_] true)
     (socket [_] ch)
     (close [_]

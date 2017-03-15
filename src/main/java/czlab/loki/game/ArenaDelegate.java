@@ -8,22 +8,19 @@
  * You must not remove this notice, or any other, from this software.
  */
 
-package czlab.test.loki;
+package czlab.loki.game;
 
-import mikera.cljunit.ClojureTest;
-import java.util.Arrays;
-import java.util.List;
+import czlab.loki.core.Session;
 
 /**
  * @author Kenneth Leung
  */
-public class ClojureJUnit extends ClojureTest {
-    @Override
-    public List<String> namespaces() {
-        return Arrays.asList(new String[]{
-                "czlab.test.loki.test"
-        });
-    }
+public interface ArenaDelegate {
+
+  /**
+   */
+  public Object onEvent(Session s, Object evt);
+
 }
 
 
