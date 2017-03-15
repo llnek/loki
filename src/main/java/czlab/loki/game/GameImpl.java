@@ -21,6 +21,27 @@ public interface GameImpl {
    */
   public Object onEvent(Session s, Object evt);
 
+  /**
+   */
+  public void startRound(Object arg);
+
+  /**
+   */
+  public void endRound();
+
+  /**
+   */
+  public void start(Object arg);
+
+  /**
+   */
+  public void stop();
+
+  /**
+   */
+  public void restart(Object arg);
+
+
 }
 
 

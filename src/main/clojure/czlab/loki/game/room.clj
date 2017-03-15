@@ -267,7 +267,8 @@
           (log/warn "room.sendmsg: unhandled event %s" msg)))
 
       (receive [this evt]
-        (let [{:keys [context type code]}
+        (let [{:keys [context
+                      type code source]}
               evt
               eng (.arena this)]
           (when (.isOpen this)
@@ -278,12 +279,19 @@
                 Events/PUBLIC (.broadcast this evt)
                 Events/PRIVATE (.update eng evt)
                 (log/warn "room.onmsg: unhandled event %s" evt))
+
+              (and (= Events/PRIVATE type)
+                   (= Events/REPLAY code))
+              (do
+                (reset! latch @sessions)
+                (.restart eng))
+
               (and (= Events/PRIVATE type)
                    (= Events/STARTED code))
-              (do
+              (let [cmd (readJsonStrKW source)]
                 (swap! latch
                        dissoc (.id ^Session context))
-                (if (empty? @latch) (.start eng)))))))
+                (if (empty? @latch) (.start eng cmd)))))))
 
       Object
 

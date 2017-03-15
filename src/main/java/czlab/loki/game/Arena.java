@@ -29,14 +29,6 @@ public interface Arena extends Initable, Startable, Restartable, Disposable {
 
   /**
    */
-  public void startRound(Object arg);
-
-  /**
-   */
-  public void endRound(Object any);
-
-  /**
-   */
   public void update(Object event);
 
   /**

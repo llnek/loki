@@ -47,7 +47,12 @@
 ;;
 (defn- mockDelegate "" ^GameImpl []
   (reify GameImpl
-    (onEvent [_ _ _])))
+    (onEvent [_ _ _])
+    (restart [_ _])
+    (start [_ _])
+    (stop [_])
+    (startRound [_ _])
+    (endRound [_])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

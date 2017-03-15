@@ -33,7 +33,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn arena<>
-  "" ^Arena [^GameImpl delegate]
+  "" ^Arena [^GameImpl impl]
 
   (let [state (atom {})]
     (reify Arena
@@ -43,9 +43,10 @@
                :sids (preduce<map> #(assoc! %1
                                             (.id ^Session %2) %2) sessions)
                :pids (preduce<map>
-                       #(assoc! %1
-                                (.. ^Session %2 player id)
-                                (. ^Session %2 number)) sessions)
+                       #(let [^Session s %2
+                              pid (.. s player id)]
+                          (assoc! %1
+                                  pid [(. s number) pid])) sessions)
                :players sessions))
       (ready [this room]
         (log/debug "engine#ready() called")
@@ -54,31 +55,31 @@
              (eventObj<> Events/PUBLIC
                          Events/START)
              (.send (.container this))))
-      (restart [_ arg]
-        (log/debug "engine#restart() called"))
+
+      (restart [this arg]
+        (log/debug "engine#restart() called")
+        (->> (:pids @state)
+             (eventObj<> Events/PUBLIC
+                         Events/RESTART)
+             (.send (.container this))))
       (restart [_] (.restart _ nil))
+
       (start [_ arg]
-        (log/info "engine#start called"))
+        (log/info "engine#start called")
+        (.start impl arg))
       (start [_] (.start _ nil))
-      (startRound [this arg]
-        (->> {:round (:round arg)}
-             (eventObj<> Events/PUBLIC
-                         Events/START_ROUND)
-             (.send (.container this))))
-      (endRound [this arg]
-        (->> {:round (:round arg)}
-             (eventObj<> Events/PUBLIC
-                         Events/END_ROUND)
-             (.send (.container this))))
+
       (stop [this]
         (->> (eventObj<> Events/PUBLIC
                          Events/STOP nil)
              (.send (.container this))))
+
       (update [this evt]
-        (.onEvent delegate
+        (.onEvent impl
                   ^Session
                   (:context evt)
                   (dissoc evt :context)))
+
       (dispose [_])
       (state [_] @state)
       (container [_] (:room @state)))))
