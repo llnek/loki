@@ -18,8 +18,12 @@
         [czlab.basal.core]
         [czlab.basal.str])
 
-  (:import [czlab.loki.game GameImpl GameMeta Arena]
-           [czlab.loki.core Session]
+  (:import [czlab.loki.core Session]
+           [czlab.loki.game
+            GameImpl
+            GameMeta
+            Arena
+            GameRoom]
            [czlab.loki.net Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -33,11 +37,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn arena<>
-  "" ^Arena [^GameImpl impl]
+  "" ^Arena [^GameRoom room ^GameImpl impl]
 
-  (let [state (atom {})]
+  (let [state (atom {:room room})]
     (reify Arena
       (init [_ sessions]
+        (log/debug "arena#init() called")
         (swap! state
                assoc
                :sids (preduce<map> #(assoc! %1
@@ -47,32 +52,24 @@
                               pid (.. s player id)]
                           (assoc! %1
                                   pid [(. s number) pid])) sessions)
-               :players sessions))
-      (ready [this room]
-        (log/debug "engine#ready() called")
-        (swap! state assoc :room room)
-        (->> (:pids @state)
-             (eventObj<> Events/PUBLIC
-                         Events/START)
-             (.send (.container this))))
+               :players sessions)
+        (.broadcast room
+                    (publicEvent<> Events/START (:pids @state))))
 
       (restart [this arg]
-        (log/debug "engine#restart() called")
-        (->> (:pids @state)
-             (eventObj<> Events/PUBLIC
-                         Events/RESTART)
-             (.send (.container this))))
+        (log/debug "arena#restart() called")
+        (.broadcast room
+                    (publicEvent<> Events/RESTART (:pids @state))))
       (restart [_] (.restart _ nil))
 
       (start [_ arg]
-        (log/info "engine#start called")
+        (log/info "arena#start called")
         (.start impl arg))
       (start [_] (.start _ nil))
 
       (stop [this]
-        (->> (eventObj<> Events/PUBLIC
-                         Events/STOP nil)
-             (.send (.container this))))
+        (.broadcast room
+                    (publicEvent<> Events/STOP nil)))
 
       (update [this evt]
         (.onEvent impl

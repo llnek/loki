@@ -176,12 +176,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- onSessionMsg
-  "" [^GameRoom room evt]
-  (if-some [s (:context evt)] (.send ^Sendable s evt)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (defn- gameRoom<>
   "" ^GameRoom [^GameMeta gameObj {:keys [source]}]
 
@@ -216,18 +210,13 @@
 
       (isShuttingDown [_] (boolean (.getv impl :shutting?)))
       (isOpen [_] (boolean (.getv impl :active?)))
-
       (canOpen [this]
         (and (not (.isOpen this))
              (>= (.countPlayers this)
                  (.minPlayers gameObj))))
 
-      (broadcast [_ evt] (.publish disp evt))
-
       (arena [_] (.getv impl :arena))
-
       (game [_] gameObj)
-
       (id [_] rid)
 
       (close [_]
@@ -238,10 +227,10 @@
         (reset! sessions {}))
 
       (open [this]
-        (let [a (-> (.callEx crt
+        (let [a (->> (.callEx crt
                              (strKW (.implClass gameObj))
-                             (vargs* Object (atom {}) (ref {})))
-                    (arena<> ))
+                             (vargs* Object this @sessions))
+                     (arena<> this ))
               sss (sort-by #(.number ^Session %)
                            (vals @sessions))]
           (log/debug "activating room %s" rid)
@@ -250,21 +239,19 @@
             (.setv :arena a))
           (doseq [s sss]
             (.addHandler this (localSubr<> s)))
-          (doto a
-            (.init  sss)
-            (.ready  this))
+          (.init a sss)
           (reset! latch @sessions)))
 
       (removeHandler [_ h] (.unsubscribe disp h))
       (addHandler [_ h] (.subscribe disp h))
 
+      (broadcast [_ evt] (.publish disp evt))
+
       (send [this msg]
-        (condp = (:type msg)
-          Events/PRIVATE (if-some [^Sendable
-                                s (:context msg)]
-                        (.send s msg))
-          Events/PUBLIC (.broadcast this msg)
-          (log/warn "room.sendmsg: unhandled event %s" msg)))
+        (cond
+          (isPrivate? msg) (some-> ^Sendable
+                                   (:context msg) send msg)
+          (isPublic? msg) (.broadcast this msg)))
 
       (receive [this evt]
         (let [{:keys [context
@@ -275,23 +262,23 @@
             (log/debug "room got an event %s" evt)
             (cond
               (empty? @latch)
-              (condp = type
-                Events/PUBLIC (.broadcast this evt)
-                Events/PRIVATE (.update eng evt)
-                (log/warn "room.onmsg: unhandled event %s" evt))
+              (cond
+                (isPublic? evt) (.broadcast this evt)
+                (isPrivate? evt) (.update eng evt))
 
-              (and (= Events/PRIVATE type)
+              (and (isPrivate? evt)
                    (= Events/REPLAY code))
-              (do
-                (reset! latch @sessions)
-                (.restart eng))
+              (do (reset! latch @sessions)
+                  (.restart eng))
 
-              (and (= Events/PRIVATE type)
+              (and (isPrivate? evt)
                    (= Events/STARTED code))
-              (let [cmd (readJsonStrKW source)]
+              (do
                 (swap! latch
                        dissoc (.id ^Session context))
-                (if (empty? @latch) (.start eng cmd)))))))
+                (if (empty? @latch)
+                  (.start eng
+                          (readJsonStrKW source))))))))
 
       Object
 

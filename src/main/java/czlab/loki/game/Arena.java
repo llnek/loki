@@ -25,7 +25,6 @@ public interface Arena extends Initable, Startable, Restartable, Disposable {
   //1. initialize
   //2. ready
   //3. start/restart
-  public Object ready(GameRoom room);
 
   /**
    */

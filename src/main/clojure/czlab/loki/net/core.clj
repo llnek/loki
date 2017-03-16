@@ -27,6 +27,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
+(defmacro isPrivate? "" [evt] `(= Events/PRIVATE (:type ~evt)))
+(defmacro isPublic? "" [evt] `(= Events/PUBLIC (:type ~evt)))
+(defmacro isCode? "" [c evt] `(= ~c (:code ~evt)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn encodeEventAsJson
@@ -74,12 +78,13 @@
   ([etype ecode body arg]
    {:pre [(number? etype)
           (number? ecode)]}
-   (let [body (if (string? body) {:message body} body)]
-     (merge {:timestamp (now<>)
-             :status Events/ERROR
-             :type etype
-             :code ecode
-             :body (or body {})} arg)))
+   (let [body (if (string? body) {:message body} body)
+         obj {:timestamp (now<>)
+              :status Events/ERROR
+              :type etype
+              :code ecode
+              :body (or body {})}]
+     (if arg (assoc obj :context arg) obj)))
 
   ([etype ecode body]
    (errorObj<> etype ecode body nil))
@@ -97,17 +102,32 @@
           (number? ecode)
           (or (nil? body)
               (map? body))]}
-   (merge {:timestamp (now<>)
-           :status Events/OK
-           :type etype
-           :code ecode
-           :body (or body {})} arg))
+   (let [obj {:timestamp (now<>)
+              :status Events/OK
+              :type etype
+              :code ecode
+              :body (or body {})}]
+     (if arg (assoc obj :context arg) obj)))
 
   ([etype ecode body]
    (eventObj<> etype ecode body nil))
 
   ([etype ecode]
    (eventObj<> etype ecode nil nil)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn privateEvent<> ""
+  ([code body] (privateEvent<> code body nil))
+  ([code body arg]
+   (eventObj<> Events/PRIVATE code body arg)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn publicEvent<> ""
+  ([code body] (publicEvent<> code body nil))
+  ([code body arg]
+   (eventObj<> Events/PUBLIC code body arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
