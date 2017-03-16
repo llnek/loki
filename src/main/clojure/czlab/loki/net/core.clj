@@ -84,7 +84,12 @@
               :type etype
               :code ecode
               :body (or body {})}]
-     (if arg (assoc obj :context arg) obj)))
+     (cond
+       (map? arg)
+       (merge obj arg)
+       (some? arg)
+       (assoc obj :context arg)
+       :else obj)))
 
   ([etype ecode body]
    (errorObj<> etype ecode body nil))
@@ -107,7 +112,12 @@
               :type etype
               :code ecode
               :body (or body {})}]
-     (if arg (assoc obj :context arg) obj)))
+     (cond
+       (map? arg)
+       (merge obj arg)
+       (some? arg)
+       (assoc obj :context arg)
+       :else obj)))
 
   ([etype ecode body]
    (eventObj<> etype ecode body nil))
