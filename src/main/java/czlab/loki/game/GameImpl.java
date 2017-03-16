@@ -19,10 +19,6 @@ public interface GameImpl {
 
   /**
    */
-  public Object onEvent(Session s, Object evt);
-
-  /**
-   */
   public void startRound(Object arg);
 
   /**
@@ -41,6 +37,10 @@ public interface GameImpl {
    */
   public void restart(Object arg);
 
+
+  /**
+   */
+  public Object onEvent(Object evt);
 
 }
 

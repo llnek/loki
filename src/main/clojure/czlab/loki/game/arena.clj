@@ -71,11 +71,7 @@
         (.broadcast room
                     (publicEvent<> Events/STOP nil)))
 
-      (update [this evt]
-        (.onEvent impl
-                  ^Session
-                  (:context evt)
-                  (dissoc evt :context)))
+      (update [this evt] (.onEvent impl evt))
 
       (dispose [_])
       (state [_] @state)
