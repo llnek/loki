@@ -10,12 +10,12 @@
 
 package czlab.loki.net;
 
-import czlab.loki.core.Session;
+import czlab.loki.sys.Session;
 import java.io.Closeable;
 
 
 /**
- * @author kenl
+ * @author Kenneth Leung
  */
 public interface PubSub extends Closeable {
 

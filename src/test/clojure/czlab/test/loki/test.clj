@@ -14,8 +14,8 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as cs])
 
-  (:use [czlab.loki.core.session]
-        [czlab.loki.core.player]
+  (:use [czlab.loki.sys.session]
+        [czlab.loki.sys.player]
         [czlab.loki.game.core]
         [czlab.loki.game.room]
         [czlab.loki.game.reqs]
@@ -31,7 +31,7 @@
             WebSocketFrame TextWebSocketFrame]
            [czlab.wabbit.sys Execvisor]
            [czlab.wabbit.ctl Pluglet]
-           [czlab.loki.core Room]
+           [czlab.loki.sys Room]
            [czlab.basal Cljrt]
            [czlab.loki.net Events]))
 
@@ -47,7 +47,7 @@
 ;;
 (defn- mockDelegate "" ^GameImpl []
   (reify GameImpl
-    (onEvent [_ _ _])
+    (onEvent [_ _])
     (restart [_ _])
     (start [_ _])
     (stop [_])

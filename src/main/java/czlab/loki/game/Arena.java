@@ -10,14 +10,14 @@
 
 package czlab.loki.game;
 
-import czlab.loki.core.Session;
+import czlab.loki.sys.Session;
 import czlab.jasal.Restartable;
 import czlab.jasal.Disposable;
 import czlab.jasal.Startable;
 import czlab.jasal.Initable;
 
 /**
- * @author kenl
+ * @author Kenneth Leung
  */
 public interface Arena extends Initable, Startable, Restartable, Disposable {
 

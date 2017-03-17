@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.core.sys
+  czlab.loki.sys.core
 
   (:require [czlab.basal.logging :as log]
             [clojure.java.io :as io])
@@ -20,14 +20,14 @@
         [czlab.basal.core]
         [czlab.basal.io]
         [czlab.basal.str]
-        [czlab.loki.core.util]
+        [czlab.loki.sys.util]
         [czlab.loki.net.core]
         [czlab.loki.game.reqs])
 
   (:import [czlab.flux.wflow Workstream Job]
            [czlab.wabbit.plugs.io WsockMsg]
            [czlab.loki.net Events]
-           [czlab.loki.core Session]
+           [czlab.loki.sys Session]
            [czlab.jasal XData]
            [java.io File]
            [io.netty.channel Channel]))
@@ -47,12 +47,12 @@
              (decodeEvent (.. ws
                               body strit)))]
     (cond
-      (and (== type Events/PRIVATE)
-           (== code Events/PLAYGAME_REQ))
+      (and (isPrivate? req)
+           (isCode? Events/PLAYGAME_REQ req))
       (doPlayReq req)
 
-      (and (== type Events/PRIVATE)
-           (== code Events/JOINGAME_REQ))
+      (and (isPrivate? req)
+           (isCode? Events/JOINGAME_REQ req))
       (doJoinReq req)
 
       :else

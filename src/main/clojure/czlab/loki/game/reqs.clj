@@ -21,9 +21,9 @@
         [czlab.loki.net.core]
         [czlab.loki.game.room]
         [czlab.loki.game.core]
-        [czlab.loki.core.player])
+        [czlab.loki.sys.player])
 
-  (:import [czlab.loki.core Room Player Session]
+  (:import [czlab.loki.sys Room Player Session]
            [czlab.wabbit.ctl Pluglet]
            [czlab.jasal Muble I18N XData]
            [io.netty.channel Channel]

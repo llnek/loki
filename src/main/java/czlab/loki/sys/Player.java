@@ -8,51 +8,42 @@
  * You must not remove this notice, or any other, from this software.
  */
 
-package czlab.loki.core;
+package czlab.loki.sys;
 
-import czlab.jasal.Dispatchable;
 import czlab.jasal.Identifiable;
-import czlab.jasal.Receivable;
-import czlab.jasal.Sendable;
-import java.io.Closeable;
+import czlab.jasal.Nameable;
 
 /**
  * @author Kenneth Leung
  */
-public interface Room extends Identifiable
-                              , Sendable
-                              , Receivable
-                              , Dispatchable
-                              , Closeable {
+public interface Player extends Identifiable {
 
   /**
    */
-  public void broadcast(Object networkEvent);
+  public Object updateGist(Object gist);
 
   /**
    */
-  public void disconnect(Session s);
+  public void removeSession(Session s);
 
   /**
    */
-  public Session connect(Player p);
+  public void addSession(Session s);
 
   /**
    */
-  public int countPlayers();
+  public int countSessions();
 
   /**
    */
-  public boolean isShuttingDown();
+  public Object nickname();
 
   /**
    */
-  public boolean isOpen();
+  public void logout();
 
   /**
    */
   public Object gist();
 
 }
-
-

@@ -21,6 +21,7 @@
             WebSocketFrame
             TextWebSocketFrame]
            [io.netty.channel Channel]
+           [czlab.loki.game GameRoom]
            [clojure.lang APersistentMap]
            [czlab.loki.net Events EventError]))
 
@@ -159,6 +160,51 @@
   [^Channel ch error msg]
 
   (replyEvent ch (errorObj<> Events/PRIVATE error msg)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn isMove? "" [evt]
+  (and (isPrivate? evt)
+       (isCode? Events/PLAY_MOVE evt)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn pokeWait! ""
+  ([room body] (pokeWait! room body nil))
+  ([room body arg]
+   (. ^GameRoom room send (privateEvent<> Events/POKE_WAIT body arg))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn pokeMove! ""
+  ([room body] (pokeMove! room body nil))
+  ([room body arg]
+   (. ^GameRoom room  send (privateEvent<> Events/POKE_MOVE body arg))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn syncArena! ""
+  ([room body] (pokeMove! room body nil))
+  ([^GameRoom room body arg]
+   (->>
+     (if arg
+       (privateEvent<> Events/SYNC_ARENA body arg)
+       (publicEvent<> Events/SYNC_ARENA body))
+     (.send room))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn bcast! ""
+  ([room code body] (bcast! room code body nil))
+  ([room code body arg]
+   (. ^GameRoom room broadcast (publicEvent<> code body arg))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn stop! ""
+  ([room body] (stop! room body nil))
+  ([room body arg] (bcast! room Events/STOP body arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

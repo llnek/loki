@@ -8,10 +8,10 @@
  * You must not remove this notice, or any other, from this software.
  */
 
-package czlab.loki.core;
+package czlab.loki.sys;
 
+import czlab.jasal.Dispatchable;
 import czlab.jasal.Identifiable;
-import czlab.jasal.Hierarchial;
 import czlab.jasal.Receivable;
 import czlab.jasal.Sendable;
 import java.io.Closeable;
@@ -19,19 +19,27 @@ import java.io.Closeable;
 /**
  * @author Kenneth Leung
  */
-public interface Session extends Closeable
-                                 ,Sendable
-                                 ,Receivable
-                                 ,Hierarchial
-                                 ,Identifiable {
+public interface Room extends Identifiable
+                              , Sendable
+                              , Receivable
+                              , Dispatchable
+                              , Closeable {
 
   /**
    */
-  public void setStatus(int status);
+  public void broadcast(Object networkEvent);
 
   /**
    */
-  public int status();
+  public void disconnect(Session s);
+
+  /**
+   */
+  public Session connect(Player p);
+
+  /**
+   */
+  public int countPlayers();
 
   /**
    */
@@ -39,23 +47,11 @@ public interface Session extends Closeable
 
   /**
    */
-  public boolean isConnected();
+  public boolean isOpen();
 
   /**
    */
-  public void bind(Object impl);
-
-  /**
-   */
-  public Room room();
-
-  /**
-   */
-  public Player player();
-
-  /**
-   */
-  public long number();
+  public Object gist();
 
 }
 

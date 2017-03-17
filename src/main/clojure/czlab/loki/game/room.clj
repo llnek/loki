@@ -19,15 +19,15 @@
         [czlab.basal.core]
         [czlab.basal.str]
         [czlab.basal.io]
-        [czlab.loki.core.util]
+        [czlab.loki.sys.util]
         [czlab.loki.net.core]
         [czlab.loki.net.disp]
         [czlab.loki.game.arena]
-        [czlab.loki.core.session])
+        [czlab.loki.sys.session])
 
   (:import [java.util.concurrent.atomic AtomicInteger]
-           [czlab.loki.core Room Player Session]
-           [czlab.jasal Sendable Dispatchable]
+           [czlab.loki.sys Room Player Session]
+           [czlab.jasal Identifiable Sendable Dispatchable]
            [czlab.loki.game GameMeta GameRoom]
            [czlab.wabbit.ctl Pluglet]
            [io.netty.channel Channel]
@@ -36,6 +36,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.core.session
+  czlab.loki.sys.session
 
   (:require [czlab.basal.logging :as log])
 
@@ -17,15 +17,12 @@
         [czlab.basal.core]
         [czlab.basal.str]
         [czlab.basal.io]
-        [czlab.loki.core.util]
+        [czlab.loki.sys.util]
         [czlab.loki.net.core]
         [czlab.loki.net.disp])
 
-  (:import [io.netty.channel Channel]
-           [czlab.loki.core
-            Room
-            Player
-            Session]
+  (:import [czlab.loki.sys Room Player Session]
+           [io.netty.channel Channel]
            [czlab.jasal Hierarchial]
            [czlab.loki.net Events]
            [czlab.loki.net MsgSender]))

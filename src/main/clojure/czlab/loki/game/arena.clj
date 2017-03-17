@@ -18,7 +18,7 @@
         [czlab.basal.core]
         [czlab.basal.str])
 
-  (:import [czlab.loki.core Session]
+  (:import [czlab.loki.sys Session]
            [czlab.loki.game
             GameImpl
             GameMeta

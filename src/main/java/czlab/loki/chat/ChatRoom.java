@@ -10,7 +10,7 @@
 
 package czlab.loki.chat;
 
-import czlab.loki.core.Room;
+import czlab.loki.sys.Room;
 
 /**
  * @author Kenneth Leung

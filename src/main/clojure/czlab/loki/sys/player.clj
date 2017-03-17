@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.core.player
+  czlab.loki.sys.player
 
   (:require [czlab.basal.logging :as log])
 
@@ -17,7 +17,7 @@
         [czlab.basal.io]
         [czlab.basal.str])
 
-  (:import [czlab.loki.core Player Session]))
+  (:import [czlab.loki.sys Player Session]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)

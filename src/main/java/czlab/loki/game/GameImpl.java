@@ -10,7 +10,7 @@
 
 package czlab.loki.game;
 
-import czlab.loki.core.Session;
+import czlab.loki.sys.Session;
 
 /**
  * @author Kenneth Leung
