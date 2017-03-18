@@ -20,7 +20,7 @@ public interface GameMeta extends Identifiable, Nameable {
 
   /**
    */
-  public boolean supportMultiPlayers();
+  public boolean supportNetwork();
 
   /**
    */

@@ -63,16 +63,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn lokiInit
-  "Initialize loki"
-  ([] (lokiInit nil))
-  ([arg]
-   {:pre [(or (nil? arg)
-              (map? arg))]}
-   (log/info "loki config= %s" arg)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (defn lokiHandler
   "Wrap handler as a workflow"
   ^Workstream [] (workstream<> lokiOnEvent))

@@ -33,7 +33,8 @@
   [games]
   {:pre [(map? games)]}
   (alter-var-root #'czlab.loki.game.core/*game-rego*
-                  (constantly games)))
+                  (constantly games))
+  (log/info "games=\n%s" games))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -42,11 +43,11 @@
 
   (when-some [g (*game-rego* (keyword gameid))]
     (let [{:keys [enabled? minp maxp impl]
-           :or {minp 1 maxp 1 engine ""}}
+           :or {minp 1 maxp 1 impl ""}}
           (:network g)]
       (log/debug "found game with id = %s" gameid)
       (reify GameMeta
-        (supportMultiPlayers [_] (boolean enabled?))
+        (supportNetwork [_] (!false? enabled?))
         (maxPlayers [_] (if (spos? maxp)
                           (int maxp)
                           (int 9)))
