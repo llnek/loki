@@ -173,14 +173,14 @@
 (defn pokeWait! ""
   ([room body] (pokeWait! room body nil))
   ([room body arg]
-   (. ^GameRoom room send (privateEvent<> Events/POKE_WAIT body arg))))
+   (.send ^GameRoom room (privateEvent<> Events/POKE_WAIT body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn pokeMove! ""
   ([room body] (pokeMove! room body nil))
   ([room body arg]
-   (. ^GameRoom room  send (privateEvent<> Events/POKE_MOVE body arg))))
+   (.send ^GameRoom room  (privateEvent<> Events/POKE_MOVE body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

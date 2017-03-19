@@ -26,6 +26,7 @@
         [czlab.loki.sys.session])
 
   (:import [java.util.concurrent.atomic AtomicInteger]
+           [java.util.concurrent CountDownLatch]
            [czlab.loki.sys Room Player Session]
            [czlab.jasal Identifiable Sendable Dispatchable]
            [czlab.loki.game GameMeta GameRoom]
@@ -36,7 +37,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -228,12 +228,12 @@
         (reset! sessions {}))
 
       (open [this]
-        (let [a (->> (.callEx crt
+        (let [sss (sort-by #(.number ^Session %)
+                           (vals @sessions))
+              a (->> (.callEx crt
                              (strKW (.implClass gameObj))
-                             (vargs* Object this @sessions))
-                     (arena<> this ))
-              sss (sort-by #(.number ^Session %)
-                           (vals @sessions))]
+                             (vargs* Object this sss))
+                     (arena<> this ))]
           (log/debug "activating room %s" rid)
           (doto impl
             (.setv :active? true)
@@ -251,12 +251,12 @@
       (send [this msg]
         (cond
           (isPrivate? msg) (some-> ^Sendable
-                                   (:context msg) send msg)
+                                   (:context msg) (.send msg))
           (isPublic? msg) (.broadcast this msg)))
 
       (receive [this evt]
         (let [{:keys [context
-                      type code source]}
+                      type code body]}
               evt
               eng (.arena this)]
           (when (.isOpen this)
@@ -277,9 +277,11 @@
               (do
                 (swap! latch
                        dissoc (.id ^Session context))
+                (log/debug "latch: one off: %d"
+                           (.number ^Session context))
                 (if (empty? @latch)
                   (.start eng
-                          (readJsonStrKW source))))))))
+                          (readJsonStrKW body))))))))
 
       Object
 
@@ -308,39 +310,34 @@
 (defn openRoom
   "" ^Session [^GameMeta game ^Player plyr arg]
 
-  (let [pss (some-> (lookupFreeRoom game)
-                    (.connect plyr))
-        _ (if (nil? pss)
-            (log/debug "failed to find a free room for game: %s" (.id game)))
-        ^Session
-        pss (or pss
-                (newFreeRoom game plyr arg))
-        ^GameRoom
-        room (some-> pss .room)]
-    (when (some? room)
-      (let
-        [^Channel ch (:socket arg)
-         src {:room (.id room)
-              :game (.id game)
-              :pnum (.number pss)}
-         evt (eventObj<> Events/PRIVATE Events/PLAYREQ_OK src)]
-        (.bind pss arg)
-        (setAKey ch PSSN pss)
-        (log/debug "replying back to user: %s" evt)
-        (replyEvent ch evt)
-        (->> (eventObj<> Events/PUBLIC
-                         Events/PLAYER_JOINED
-                         {:pnum (.number pss)
-                          :puid (.id plyr)})
-             (.broadcast room))
-        (if (.canOpen room)
-          (do
-            (log/debug "room has enough players, can open")
-            (addGameRoom room)
-            (log/debug "room.canOpen = true")
-            (.open room))
-          (addFreeRoom room))))
-    pss))
+  (locking game
+    (let [pss (some-> (lookupFreeRoom game) (.connect plyr))
+          ^Session
+          pss (or pss (newFreeRoom game plyr arg))
+          ^GameRoom room (some-> pss .room)]
+      (when (some? room)
+        (let
+          [^Channel ch (:socket arg)
+           src {:room (.id room)
+                :game (.id game)
+                :pnum (.number pss)}
+           evt (privateEvent<> Events/PLAYREQ_OK src)]
+          (.bind pss arg)
+          (setAKey ch PSSN pss)
+          (log/debug "replying back to user: %s" evt)
+          (replyEvent ch evt)
+          (->> (publicEvent<> Events/PLAYER_JOINED
+                              {:pnum (.number pss)
+                               :puid (.id plyr)})
+               (.broadcast room))
+          (if (.canOpen room)
+            (do
+              (log/debug "room has enough players, can open")
+              (addGameRoom room)
+              (log/debug "room.canOpen = true")
+              (.open room))
+            (addFreeRoom room))))
+      pss)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -351,27 +348,27 @@
 
   (let [^Channel ch (:socket arg)
         game (.game room)]
-    (when (< (.countPlayers room)
-             (.maxPlayers game))
-      (let [pss (.connect room plyr)
-            src {:room (.id room)
-                 :game (.id game)
-                 :pnum (.number pss)}
-            evt (eventObj<> Events/PRIVATE
-                            Events/JOINREQ_OK src)]
-        (.bind pss arg)
-        (setAKey ch PSSN pss)
-        (replyEvent ch evt)
-        (log/debug "replying back to user: %s" evt)
-        (when-not (.isOpen room)
-          (if (.canOpen room)
-            (do
-              (log/debug "room has enough players, can open")
-              (addGameRoom room)
-              (log/debug "room.canOpen = true")
-              (.open room))
-            (addFreeRoom room)))
-        pss))))
+    (locking game
+      (when (< (.countPlayers room)
+               (.maxPlayers game))
+        (let [pss (.connect room plyr)
+              src {:room (.id room)
+                   :game (.id game)
+                   :pnum (.number pss)}
+              evt (privateEvent<> Events/JOINREQ_OK src)]
+          (.bind pss arg)
+          (setAKey ch PSSN pss)
+          (replyEvent ch evt)
+          (log/debug "replying back to user: %s" evt)
+          (when-not (.isOpen room)
+            (if (.canOpen room)
+              (do
+                (log/debug "room has enough players, can open")
+                (addGameRoom room)
+                (log/debug "room.canOpen = true")
+                (.open room))
+              (addFreeRoom room)))
+          pss)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
