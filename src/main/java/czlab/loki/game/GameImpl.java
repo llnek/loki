@@ -11,15 +11,20 @@
 package czlab.loki.game;
 
 import czlab.loki.sys.Session;
+import czlab.jasal.Initable;
 
 /**
  * @author Kenneth Leung
  */
-public interface GameImpl {
+public interface GameImpl extends Initable {
 
   /**
    */
   public void startRound(Object arg);
+
+  /**
+   */
+  public Object playerGist(Object id);
 
   /**
    */

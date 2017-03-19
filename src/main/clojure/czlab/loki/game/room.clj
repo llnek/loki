@@ -185,7 +185,7 @@
         pcount (AtomicInteger.)
         crt (.cljrt ctr)
         sessions (atom {})
-        latch (atom {})
+        latch (atom nil)
         disp (dispatcher<>)
         rid (uid<>)
         created (now<>)]
@@ -230,6 +230,7 @@
       (open [this]
         (let [sss (sort-by #(.number ^Session %)
                            (vals @sessions))
+              sc (count sss)
               a (->> (.callEx crt
                              (strKW (.implClass gameObj))
                              (vargs* Object this sss))
@@ -241,7 +242,7 @@
           (doseq [s sss]
             (.addHandler this (localSubr<> s)))
           (.init a sss)
-          (reset! latch @sessions)))
+          (reset! latch (CountDownLatch. (int sc)))))
 
       (removeHandler [_ h] (.unsubscribe disp h))
       (addHandler [_ h] (.subscribe disp h))
@@ -262,24 +263,25 @@
           (when (.isOpen this)
             (log/debug "room got an event %s" evt)
             (cond
-              (empty? @latch)
+              (and (some? @latch)
+                   (== 0 (.getCount ^CountDownLatch @latch)))
               (cond
                 (isPublic? evt) (.broadcast this evt)
                 (isPrivate? evt) (.update eng evt))
 
               (and (isPrivate? evt)
                    (= Events/REPLAY code))
-              (do (reset! latch @sessions)
+              (do (reset! latch (CountDownLatch.
+                                  (int (count @sessions))))
                   (.restart eng))
 
               (and (isPrivate? evt)
                    (= Events/STARTED code))
               (do
-                (swap! latch
-                       dissoc (.id ^Session context))
+                (.countDown ^CountDownLatch @latch)
                 (log/debug "latch: one off: %d"
                            (.number ^Session context))
-                (if (empty? @latch)
+                (if (== 0 (.getCount ^CountDownLatch @latch))
                   (.start eng
                           (readJsonStrKW body))))))))
 
@@ -318,7 +320,8 @@
       (when (some? room)
         (let
           [^Channel ch (:socket arg)
-           src {:room (.id room)
+           src {:puid (.id plyr)
+                :room (.id room)
                 :game (.id game)
                 :pnum (.number pss)}
            evt (privateEvent<> Events/PLAYREQ_OK src)]
@@ -352,7 +355,8 @@
       (when (< (.countPlayers room)
                (.maxPlayers game))
         (let [pss (.connect room plyr)
-              src {:room (.id room)
+              src {:puid (.id plyr)
+                   :room (.id room)
                    :game (.id game)
                    :pnum (.number pss)}
               evt (privateEvent<> Events/JOINREQ_OK src)]

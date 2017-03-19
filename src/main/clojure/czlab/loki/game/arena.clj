@@ -31,8 +31,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- dummy2 [a b] nil)
-(defn- dummy1 [a] nil)
+(defn- fmtStartBody [^GameImpl impl sessions]
+  (preduce<map>
+    #(let [^Session s %2
+           sn (.number s)
+           y (.player s)
+           yid (.id y)
+           g (.playerGist impl yid)]
+       (assoc! %1
+               (keyword yid)
+               (merge {:session_number sn} g))) sessions))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -45,21 +53,20 @@
         (log/debug "arena#init() called")
         (swap! state
                assoc
-               :sids (preduce<map> #(assoc! %1
-                                            (.id ^Session %2) %2) sessions)
-               :pids (preduce<map>
-                       #(let [^Session s %2
-                              pid (.. s player id)]
-                          (assoc! %1
-                                  pid [(. s number) pid])) sessions)
-               :players sessions)
-        (.broadcast room
-                    (publicEvent<> Events/START (:pids @state))))
+               :sessions sessions
+               :sids (preduce<map>
+                       #(assoc! %1
+                                (.id ^Session %2) %2) sessions))
+        (.init impl {})
+        (->> (fmtStartBody impl sessions)
+             (publicEvent<> Events/START)
+             (.broadcast room)))
 
       (restart [this arg]
         (log/debug "arena#restart() called")
-        (.broadcast room
-                    (publicEvent<> Events/RESTART (:pids @state))))
+        (->> (fmtStartBody impl (:sessions @state))
+             (publicEvent<> Events/RESTART)
+             (.broadcast room)))
       (restart [_] (.restart _ nil))
 
       (start [_ arg]
