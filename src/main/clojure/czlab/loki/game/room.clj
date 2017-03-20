@@ -165,7 +165,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn lookupGameRoom
+(defn- lookupGameRoom
   "" ^GameRoom [gameid roomid]
   (log/debug "looking for room: %s, game: %s" roomid gameid)
   (get (@game-rooms gameid) roomid))
@@ -291,7 +291,8 @@
   "" ^GameRoom [^GameMeta game options]
 
   (let [room (gameRoom<> game options)]
-    (log/debug "created a new play room: %s" (.id room))))
+    (log/debug "created a new play room: %s" (.id room))
+    room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -332,14 +333,19 @@
 ;;
 (defn joinRoom
   "" ^Session
-  [^GameRoom room ^Player plyr arg]
-  {:pre [(some? room)(some? plyr)]}
+  [^Player plyr gameid roomid arg]
+  {:pre [(some? plyr)]}
 
-  (let [^Channel ch (:socket arg)
-        game (.game room)]
-    (locking _room_mutex_
-      (when (< (.countPlayers room)
-               (.maxPlayers game))
+  (locking _room_mutex_
+    (let [^GameRoom
+          room (or (lookupGameRoom gameid roomid)
+                   (lookupFreeRoom gameid roomid))
+          ^GameMeta
+          game (some-> room .game)
+          ch (:socket arg)]
+      (when (and room
+                 (< (.countPlayers room)
+                    (.maxPlayers game)))
         (let [pss (.connect room plyr)
               src {:puid (.id plyr)
                    :room (.id room)

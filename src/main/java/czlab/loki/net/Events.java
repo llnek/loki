@@ -61,6 +61,7 @@ public interface Events {
 
   public static final long REPLAY             = 880L;
   public static final long PLAY_MOVE          = 881L;
+  public static final long GAME_WON          = 882L;
 
   // end game
   public static final long QUIT          = 911L;

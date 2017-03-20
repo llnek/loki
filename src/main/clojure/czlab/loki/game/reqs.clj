@@ -89,28 +89,19 @@
              (hgl? roomid))
       (let
         [p (lookupPlayer principal credential)
-         r (if (some? p)
-             (or (lookupGameRoom gameid roomid)
-                 (lookupFreeRoom gameid roomid)))]
+         pss (some-> p (joinRoom gameid roomid))]
         (cond
           (nil? p)
           (do->nil
             (replyError socket
                         Events/USER_NOK
                         (rstr rcb "login.error")))
-          (nil? r)
+          (nil? pss)
           (do->nil
             (replyError socket
                         Events/ROOM_NOK
                         (rstr rcb "room.bad")))
-          :else
-          (let
-            [pss (joinRoom r p evt)]
-            (if (nil? pss)
-              (replyError socket
-                          Events/ROOM_FILLED
-                          (rstr rcb "room.full")))
-            pss)))
+          :else pss))
       (do->nil
         (replyError socket
                     Events/JOINREQ_NOK
