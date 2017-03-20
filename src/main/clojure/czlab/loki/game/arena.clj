@@ -88,14 +88,12 @@
               sid (. ^Session context id)
               snum (. ^Session context number)]
           (cond
-            (and (some? @latch)
-                 (empty? @latch))
-            (.onEvent impl evt)
-
             (and (isPrivate? evt)
                  (isCode? Events/REPLAY evt))
-            (do (reset! latch (:sids @state))
-                (.restart this))
+            (locking _latch_mutex_
+              (when (empty? @latch)
+                (reset! latch (:sids @state))
+                (.restart this)))
 
             (and (isPrivate? evt)
                  (isCode? Events/STARTED evt))
@@ -104,7 +102,11 @@
                 (log/debug "latch: take-off: %d" snum)
                 (swap! latch dissoc sid)
                 (if (empty? @latch)
-                  (.start this (readJsonStrKW body))))))))
+                  (.start this (readJsonStrKW body)))))
+
+            (and (some? @latch)
+                 (empty? @latch))
+            (.onEvent impl evt))))
 
       (dispose [_])
       (state [_] @state)
