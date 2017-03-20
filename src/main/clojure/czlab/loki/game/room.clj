@@ -38,6 +38,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
+(def ^:private _room_mutex_ (Object.))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; {game-id -> map
@@ -60,13 +62,17 @@
 ;;
 (defn clearFreeRooms
   "Internal only" {:no-doc true}
-  [gameid] (swap! free-rooms assoc gameid (ordered-map)))
+  [gameid]
+  (locking _room_mutex_
+    (swap! free-rooms assoc gameid (ordered-map))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn clearGameRooms
   "Internal only" {:no-doc true}
-  [gameid] (swap! game-rooms assoc gameid (ordered-map)))
+  [gameid]
+  (locking _room_mutex_
+    (swap! game-rooms assoc gameid (ordered-map))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -74,12 +80,13 @@
   "Remove an active room"
   ^GameRoom [gameid roomid]
 
-  (let [gm (@game-rooms gameid)
-        r (get gm roomid)]
-    (when (some? r)
-      (log/debug "remove room(A): %s, game: %s" roomid gameid)
-      (swap! game-rooms update-in [gameid] dissoc roomid)
-      r)))
+  (locking _room_mutex_
+    (let [gm (@game-rooms gameid)
+          r (get gm roomid)]
+      (when (some? r)
+        (log/debug "remove room(A): %s, game: %s" roomid gameid)
+        (swap! game-rooms update-in [gameid] dissoc roomid)
+        r))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -87,32 +94,34 @@
   "Remove a waiting room"
   ^GameRoom [gameid roomid]
 
-  (let [gm (@free-rooms gameid)
-        r (get gm roomid)]
-    (when (some? r)
-      (log/debug "remove room(F): %s, game: %s" roomid gameid)
-      (swap! free-rooms update-in [gameid] dissoc roomid)
-      r)))
+  (locking _room_mutex_
+    (let [gm (@free-rooms gameid)
+          r (get gm roomid)]
+      (when (some? r)
+        (log/debug "remove room(F): %s, game: %s" roomid gameid)
+        (swap! free-rooms update-in [gameid] dissoc roomid)
+        r))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn addFreeRoom
+(defn- addFreeRoom
   "Add a new partially filled room
    into the pending set"
   ^GameRoom [^GameRoom room] {:pre [(some? room)]}
 
-  (let [rid (.id room)
-        gid (.. room game id)
-        m (@free-rooms gid)]
-    (log/debug "adding a room(F): %s, game: %s" rid gid)
-    (if (some? m)
-      (swap! free-rooms update-in [gid] assoc rid room)
-      (swap! free-rooms assoc gid (ordered-map rid room)))
-    room))
+  (locking _room_mutex_
+    (let [rid (.id room)
+          gid (.. room game id)
+          m (@free-rooms gid)]
+      (log/debug "adding a room(F): %s, game: %s" rid gid)
+      (if (some? m)
+        (swap! free-rooms update-in [gid] assoc rid room)
+        (swap! free-rooms assoc gid (ordered-map rid room)))
+      room)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn addGameRoom
+(defn- addGameRoom
   "Move room into the active set"
   ^GameRoom [^GameRoom room] {:pre [(some? room)]}
 
@@ -147,12 +156,11 @@
        (detachFreeRoom gameid (.id r))
        r)))
 
-  ([game]
-   (let [gid (.id ^GameMeta game)
-         gm (@free-rooms gid)]
+  ([gameid]
+   (let [gm (@free-rooms gameid)]
     (when-some
       [^GameRoom r (first (vals gm))]
-      (detachFreeRoom gid (.id r))
+      (detachFreeRoom gameid (.id r))
       r))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -185,7 +193,6 @@
         pcount (AtomicInteger.)
         crt (.cljrt ctr)
         sessions (atom {})
-        latch (atom nil)
         disp (dispatcher<>)
         rid (uid<>)
         created (now<>)]
@@ -241,8 +248,7 @@
             (.setv :arena a))
           (doseq [s sss]
             (.addHandler this (localSubr<> s)))
-          (.init a sss)
-          (reset! latch (CountDownLatch. (int sc)))))
+          (.init a sss)))
 
       (removeHandler [_ h] (.unsubscribe disp h))
       (addHandler [_ h] (.subscribe disp h))
@@ -256,34 +262,15 @@
           (isPublic? msg) (.broadcast this msg)))
 
       (receive [this evt]
-        (let [{:keys [context
-                      type code body]}
-              evt
-              eng (.arena this)]
-          (when (.isOpen this)
-            (log/debug "room got an event %s" evt)
-            (cond
-              (and (some? @latch)
-                   (== 0 (.getCount ^CountDownLatch @latch)))
-              (cond
-                (isPublic? evt) (.broadcast this evt)
-                (isPrivate? evt) (.update eng evt))
+        (when (and (.isOpen this)
+                   (some? (.arena this)))
+          (log/debug "room got an event %s" evt)
+          (cond
+            (isPublic? evt)
+            (.broadcast this evt)
 
-              (and (isPrivate? evt)
-                   (= Events/REPLAY code))
-              (do (reset! latch (CountDownLatch.
-                                  (int (count @sessions))))
-                  (.restart eng))
-
-              (and (isPrivate? evt)
-                   (= Events/STARTED code))
-              (do
-                (.countDown ^CountDownLatch @latch)
-                (log/debug "latch: one off: %d"
-                           (.number ^Session context))
-                (if (== 0 (.getCount ^CountDownLatch @latch))
-                  (.start eng
-                          (readJsonStrKW body))))))))
+            (isPrivate? evt)
+            (.update (.arena this) evt))))
 
       Object
 
@@ -300,23 +287,22 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn newFreeRoom
-  "" ^Session [^GameMeta game ^Player py options]
+(defn- newFreeRoom
+  "" ^GameRoom [^GameMeta game options]
 
   (let [room (gameRoom<> game options)]
-    (log/debug "created a new play room: %s" (.id room))
-    (.connect room py)))
+    (log/debug "created a new play room: %s" (.id room))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn openRoom
   "" ^Session [^GameMeta game ^Player plyr arg]
 
-  (locking game
-    (let [pss (some-> (lookupFreeRoom game) (.connect plyr))
+  (locking _room_mutex_
+    (let [room (or (lookupFreeRoom (.id game))
+                   (newFreeRoom game arg))
           ^Session
-          pss (or pss (newFreeRoom game plyr arg))
-          ^GameRoom room (some-> pss .room)]
+          pss (some-> room (.connect plyr))]
       (when (some? room)
         (let
           [^Channel ch (:socket arg)
@@ -351,7 +337,7 @@
 
   (let [^Channel ch (:socket arg)
         game (.game room)]
-    (locking game
+    (locking _room_mutex_
       (when (< (.countPlayers room)
                (.maxPlayers game))
         (let [pss (.connect room plyr)

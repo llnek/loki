@@ -15,6 +15,7 @@
             [clojure.java.io :as io])
 
   (:use [czlab.loki.net.core]
+        [czlab.basal.format]
         [czlab.basal.core]
         [czlab.basal.str])
 
@@ -28,6 +29,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
+
+(def ^:private _latch_mutex_ (Object.))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -47,7 +50,8 @@
 (defn arena<>
   "" ^Arena [^GameRoom room ^GameImpl impl]
 
-  (let [state (atom {:room room})]
+  (let [state (atom {:room room})
+        latch (atom nil)]
     (reify Arena
       (init [_ sessions]
         (log/debug "arena#init() called")
@@ -58,6 +62,7 @@
                        #(assoc! %1
                                 (.id ^Session %2) %2) sessions))
         (.init impl {})
+        (reset! latch (:sids @state))
         (->> (fmtStartBody impl sessions)
              (publicEvent<> Events/START)
              (.broadcast room)))
@@ -78,11 +83,36 @@
         (.broadcast room
                     (publicEvent<> Events/STOP nil)))
 
-      (update [this evt] (.onEvent impl evt))
+      (update [this evt]
+        (let [{:keys [context body]} evt
+              sid (. ^Session context id)
+              snum (. ^Session context number)]
+          (cond
+            (and (some? @latch)
+                 (empty? @latch))
+            (.onEvent impl evt)
+
+            (and (isPrivate? evt)
+                 (isCode? Events/REPLAY evt))
+            (do (reset! latch (:sids @state))
+                (.restart this))
+
+            (and (isPrivate? evt)
+                 (isCode? Events/STARTED evt))
+            (if (contains? @latch sid)
+              (locking _latch_mutex_
+                (log/debug "latch: take-off: %d" snum)
+                (swap! latch dissoc sid)
+                (if (empty? @latch)
+                  (.start this (readJsonStrKW body))))))))
 
       (dispose [_])
       (state [_] @state)
       (container [_] (:room @state)))))
+
+
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
