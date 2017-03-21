@@ -15,22 +15,37 @@
             [clojure.java.io :as io])
 
   (:use [czlab.loki.net.core]
+        [czlab.loki.net.disp]
         [czlab.basal.format]
         [czlab.basal.core]
-        [czlab.basal.str])
+        [czlab.basal.io]
+        [czlab.basal.str]
+        [czlab.loki.sys.session])
 
-  (:import [czlab.loki.sys Session]
-           [czlab.loki.game
-            GameImpl
-            GameMeta
-            Arena
-            GameRoom]
-           [czlab.loki.net Events]))
+  (:import [czlab.jasal Identifiable Sendable Dispatchable]
+           [java.util.concurrent.atomic AtomicInteger]
+           [czlab.loki.game GameImpl GameMeta Arena]
+           [czlab.loki.sys Session]
+           [czlab.wabbit.ctl Pluglet]
+           [czlab.loki.net Events Subr PubSub]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 (def ^:private _latch_mutex_ (Object.))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn- localSubr<>
+  "" ^Subr [^Session ps]
+
+  (reify Subr
+    (eventType [_] Events/PUBLIC)
+    (session [_] ps)
+    (receive [me evt]
+      (if (== (.eventType me)
+              (:type evt))
+        (.send ps evt)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -48,79 +63,145 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn arena<>
-  "" ^Arena [^GameRoom room ^GameImpl impl]
+  "" ^Arena [^GameMeta gameObj {:keys [source]}]
 
-  (let [state (atom {:room room
+  (let [state (atom {:shutting? false
+                     :opened? false
                      :enabled? false})
+        ctr (.server ^Pluglet source)
+        pcount (AtomicInteger.)
+        crt (.cljrt ctr)
+        sessions (atom {})
+        disp (dispatcher<>)
+        created (now<>)
+        rid (uid<>)
         latch (atom nil)]
-    (reify Arena
-      (init [this sessions]
-        (log/debug "arena#init() called")
-        (swap! state
-               assoc
-               :sessions sessions
-               :sids (preduce<map>
-                       #(assoc! %1
-                                (.id ^Session %2) %2) sessions))
-        (.init impl {:arena this})
-        (reset! latch (:sids @state))
-        (->> (fmtStartBody impl sessions)
-             (publicEvent<> Events/START)
-             (.broadcast room)))
 
-      (isEnabled [_] (boolean (:enabled? @state)))
+    (reify Arena
+
+      (countPlayers [_] (count @sessions))
+
+      (disconnect [_ ps]
+        (let [py (.player ps)]
+          (swap! sessions dissoc (.id ps))
+          (.removeSession py ps)
+          (.unsubscribeIfSession disp ps)))
+
+      (connect [this py]
+        (let [ps (session<> this py (.incrementAndGet pcount))
+              _ {:puid (.id py) :pnum (.number ps)}]
+          (swap! sessions assoc (.id ps) ps)
+          (.addSession py ps)
+          ps))
+
+      (isShuttingDown [_] (bool! (:shutting? @state)))
+
+      (canOpen [this]
+        (and (not (:opened? @state))
+             (>= (.countPlayers this)
+                 (.minPlayers gameObj))))
+
+      (game [_] gameObj)
+      (id [_] rid)
+
+      (close [_]
+        (doseq [^Session v (vals @sessions)]
+          (-> (.player v)
+              (.removeSession v))
+          (closeQ v))
+        (reset! sessions {}))
+
+      (open [this]
+        (let [sss (sort-by #(.number ^Session %)
+                           (vals @sessions))
+              ^GameImpl
+              g (.callEx crt
+                         (strKW (.implClass gameObj))
+                         (vargs* Object this sss))]
+          (log/debug "activating room %s" rid)
+          (swap! state assoc :opened? true :impl g)
+          (doseq [s sss]
+            (.addHandler this (localSubr<> s)))
+          (reset! latch @sessions)
+          (.init g nil)
+          (->> (fmtStartBody g sss)
+               (publicEvent<> Events/START)
+               (.broadcast this))))
+
+      (removeHandler [_ h] (.unsubscribe disp h))
+      (addHandler [_ h] (.subscribe disp h))
+
+      (broadcast [_ evt] (.publish disp evt))
+
+      (send [this msg]
+        (cond
+          (isPrivate? msg) (some-> ^Sendable
+                                   (:context msg) (.send msg))
+          (isPublic? msg) (.broadcast this msg)))
+
+      (isActive [_] (bool! (:enabled? @state)))
 
       (restart [this arg]
         (log/debug "arena#restart() called")
-        (->> (fmtStartBody impl (:sessions @state))
+        (->> (-> (:impl @state)
+                 (fmtStartBody (vals @sessions)))
              (publicEvent<> Events/RESTART)
-             (.broadcast room)))
+             (.broadcast this)))
       (restart [_] (.restart _ nil))
 
       (start [_ arg]
         (log/info "arena#start called")
         (swap! state assoc :enabled? true)
-        (.start impl arg))
+        (.start ^GameImpl (:impl @state) arg))
       (start [_] (.start _ nil))
 
-      (stop [this]
+      (stop [_]
         (swap! state assoc :enabled? false))
 
-      (update [this evt]
-        (let [{:keys [context body]} evt
-              sid (. ^Session context id)
-              snum (. ^Session context number)]
+      (receive [this evt]
+        (when (:opened? @state)
+          (log/debug "room got an event %s" evt)
           (cond
-            (and (not (.isEnabled this))
-                 (isPrivate? evt)
-                 (isCode? Events/REPLAY evt))
-            (locking _latch_mutex_
-              (when (empty? @latch)
-                (reset! latch (:sids @state))
-                (.restart this)))
+            (isPublic? evt)
+            (.broadcast this evt)
 
-            (and (not (.isEnabled this))
-                 (isPrivate? evt)
-                 (isCode? Events/STARTED evt))
-            (if (contains? @latch sid)
-              (locking _latch_mutex_
-                (log/debug "latch: take-off: %d" snum)
-                (swap! latch dissoc sid)
-                (if (empty? @latch)
-                  (.start this (readJsonStrKW body)))))
+            (isPrivate? evt)
+            (let [{:keys [context body]}
+                  evt
+                  ss (cast? Session context)]
+              (assert (some? ss))
+              (cond
+                (and (not (.isActive this))
+                     (isCode? Events/REPLAY evt))
+                (locking _latch_mutex_
+                  (when (empty? @latch)
+                    (reset! latch @sessions)
+                    (.restart this)))
+                (and (not (.isActive this))
+                     (isCode? Events/STARTED evt))
+                (if (in? @latch (.id ss))
+                  (locking _latch_mutex_
+                    (log/debug "latch: take-off: %s" (.id ss))
+                    (swap! latch dissoc (.id ss))
+                    (if (empty? @latch)
+                      (.start this (readJsonStrKW body)))))
+                (and (.isActive this)
+                     (some? @latch)
+                     (empty? @latch))
+                (.onEvent ^GameImpl (:impl @state) evt))))))
 
-            (and (.isEnabled this)
-                 (some? @latch)
-                 (empty? @latch))
-            (.onEvent impl evt))))
+      Object
 
-      (dispose [_])
-      (state [_] @state)
-      (container [_] (:room @state)))))
+      (hashCode [this] (.hashCode rid))
 
-
-
-
+      (equals [this obj]
+        (if (nil? obj)
+          false
+          (or (identical? this obj)
+              (and (= (.getClass this)
+                      (.getClass obj))
+                   (= (.id ^Identifiable obj)
+                      (.id this)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

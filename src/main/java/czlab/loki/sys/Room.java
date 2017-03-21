@@ -47,7 +47,11 @@ public interface Room extends Identifiable
 
   /**
    */
-  public boolean isOpen();
+  public boolean canOpen();
+
+  /**
+   */
+  public void open();
 
   /**
    */

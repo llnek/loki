@@ -11,36 +11,28 @@
 package czlab.loki.game;
 
 import czlab.loki.sys.Session;
+import czlab.loki.sys.Room;
 import czlab.jasal.Restartable;
 import czlab.jasal.Disposable;
 import czlab.jasal.Startable;
-import czlab.jasal.Initable;
 
 /**
  * @author Kenneth Leung
  */
-public interface Arena extends Initable, Startable, Restartable, Disposable {
+public interface Arena extends Room, Startable, Restartable {
 
-  //life cycle of engine
+  //life cycle of arena
   //1. initialize
   //2. ready
   //3. start/restart
 
   /**
    */
-  public void update(Object event);
+  public GameMeta game();
 
   /**
    */
-  public Object state();
-
-  /**
-   */
-  public boolean isEnabled();
-
-  /**
-   */
-  public GameRoom container();
+  public boolean isActive();
 
 }
 
