@@ -50,10 +50,11 @@
 (defn arena<>
   "" ^Arena [^GameRoom room ^GameImpl impl]
 
-  (let [state (atom {:room room})
+  (let [state (atom {:room room
+                     :enabled? false})
         latch (atom nil)]
     (reify Arena
-      (init [_ sessions]
+      (init [this sessions]
         (log/debug "arena#init() called")
         (swap! state
                assoc
@@ -61,11 +62,13 @@
                :sids (preduce<map>
                        #(assoc! %1
                                 (.id ^Session %2) %2) sessions))
-        (.init impl {})
+        (.init impl {:arena this})
         (reset! latch (:sids @state))
         (->> (fmtStartBody impl sessions)
              (publicEvent<> Events/START)
              (.broadcast room)))
+
+      (isEnabled [_] (boolean (:enabled? @state)))
 
       (restart [this arg]
         (log/debug "arena#restart() called")
@@ -76,26 +79,28 @@
 
       (start [_ arg]
         (log/info "arena#start called")
+        (swap! state assoc :enabled? true)
         (.start impl arg))
       (start [_] (.start _ nil))
 
       (stop [this]
-        (.broadcast room
-                    (publicEvent<> Events/STOP nil)))
+        (swap! state assoc :enabled? false))
 
       (update [this evt]
         (let [{:keys [context body]} evt
               sid (. ^Session context id)
               snum (. ^Session context number)]
           (cond
-            (and (isPrivate? evt)
+            (and (not (.isEnabled this))
+                 (isPrivate? evt)
                  (isCode? Events/REPLAY evt))
             (locking _latch_mutex_
               (when (empty? @latch)
                 (reset! latch (:sids @state))
                 (.restart this)))
 
-            (and (isPrivate? evt)
+            (and (not (.isEnabled this))
+                 (isPrivate? evt)
                  (isCode? Events/STARTED evt))
             (if (contains? @latch sid)
               (locking _latch_mutex_
@@ -104,7 +109,8 @@
                 (if (empty? @latch)
                   (.start this (readJsonStrKW body)))))
 
-            (and (some? @latch)
+            (and (.isEnabled this)
+                 (some? @latch)
                  (empty? @latch))
             (.onEvent impl evt))))
 

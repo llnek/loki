@@ -12,6 +12,7 @@ package czlab.loki.game;
 
 import czlab.loki.sys.Session;
 import czlab.jasal.Initable;
+import czlab.jasal.Hierarchial;
 
 /**
  * @author Kenneth Leung

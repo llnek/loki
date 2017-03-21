@@ -36,6 +36,10 @@ public interface Arena extends Initable, Startable, Restartable, Disposable {
 
   /**
    */
+  public boolean isEnabled();
+
+  /**
+   */
   public GameRoom container();
 
 }
