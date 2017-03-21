@@ -45,12 +45,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn countFreeRooms
-  "" [gameid] (count (get @free-rooms gameid)))
+  "" ^long [gameid] (count (get @free-rooms (keyword gameid))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn countGameRooms
-  "" [gameid] (count (get @game-rooms gameid)))
+  "" ^long [gameid] (count (get @game-rooms (keyword gameid))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -58,7 +58,7 @@
   "Internal only" {:no-doc true}
   [gameid]
   (locking _room_mutex_
-    (swap! free-rooms assoc gameid (ordered-map))))
+    (swap! free-rooms assoc (keyword gameid) (ordered-map))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -66,7 +66,7 @@
   "Internal only" {:no-doc true}
   [gameid]
   (locking _room_mutex_
-    (swap! game-rooms assoc gameid (ordered-map))))
+    (swap! game-rooms assoc (keyword gameid) (ordered-map))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -75,7 +75,8 @@
   ^Room [gameid roomid]
 
   (locking _room_mutex_
-    (let [gm (@game-rooms gameid)
+    (let [gameid (keyword gameid)
+          gm (@game-rooms gameid)
           r (get gm roomid)]
       (when (some? r)
         (log/debug "remove room(A): %s, game: %s" roomid gameid)
@@ -89,7 +90,8 @@
   ^Room [gameid roomid]
 
   (locking _room_mutex_
-    (let [gm (@free-rooms gameid)
+    (let [gameid (keyword gameid)
+          gm (@free-rooms gameid)
           r (get gm roomid)]
       (when (some? r)
         (log/debug "remove room(F): %s, game: %s" roomid gameid)
@@ -98,40 +100,37 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- addFreeRoom
-  "Add a new partially filled room
-   into the pending set"
-  ^Room [^Arena room] {:pre [(some? room)]}
+(defn- addXXXRoom
+  "" [^Arena room db dbt] {:pre [(some? room)]}
 
   (locking _room_mutex_
-    (let [rid (.id room)
-          gid (.. room game id)
-          m (@free-rooms gid)]
-      (log/debug "adding a room(F): %s, game: %s" rid gid)
-      (if (some? m)
-        (swap! free-rooms update-in [gid] assoc rid room)
-        (swap! free-rooms assoc gid (ordered-map rid room)))
+    (let [gid (.. room game id)
+          rid (.id room)
+          m? (contains? @db gid)]
+      (log/debug "adding a %s: %s, game: %s" dbt rid gid)
+      (if m?
+        (swap! db update-in [gid] assoc rid room)
+        (swap! db assoc gid (ordered-map rid room)))
       room)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn- addFreeRoom
+  "Add a new partially filled room into the pending set"
+  ^Room [^Arena room]
+  (addXXXRoom room free-rooms "room(F)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- addGameRoom
   "Move room into the active set"
-  ^Room [^Arena room] {:pre [(some? room)]}
-
-  (let [rid (.id room)
-        gid (.. room game id)
-        m (@game-rooms gid)]
-    (log/debug "add a room(A): %s, game: %s" rid gid)
-    (if (some? m)
-      (swap! game-rooms update-in [gid] assoc rid room)
-      (swap! game-rooms assoc gid (ordered-map rid room)))
-    room))
+  ^Room [^Arena room]
+  (addXXXRoom room game-rooms "room(A)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- detachFreeRoom
-  "" [gameid roomid]
+  "" [gameid roomid] {:pre [(keyword? gameid)]}
 
   (log/debug "found a room(F): %s, game: %s" roomid gameid)
   (swap! free-rooms
@@ -144,14 +143,16 @@
   {:tag Room}
 
   ([gameid roomid]
-   (let [gm (@free-rooms gameid)
+   (let [gameid (keyword gameid)
+         gm (@free-rooms gameid)
          ^Room r (get gm roomid)]
      (when (some? r)
        (detachFreeRoom gameid (.id r))
        r)))
 
   ([gameid]
-   (let [gm (@free-rooms gameid)]
+   (let [gameid (keyword gameid)
+         gm (@free-rooms gameid)]
     (when-some
       [^Room r (first (vals gm))]
       (detachFreeRoom gameid (.id r))
@@ -161,7 +162,7 @@
 ;;
 (defn- lookupGameRoom
   "" ^Room [gameid roomid]
-  (log/debug "looking for room: %s, game: %s" roomid gameid)
+  (log/debug "looking for room(A): %s, game: %s" roomid gameid)
   (get (@game-rooms gameid) roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -170,7 +171,7 @@
   "" ^Room [^Info game options]
 
   (let [room (arena<> game options)]
-    (log/debug "created a new play room: %s" (.id room))
+    (log/debug "created a new room(F): %s" (.id room))
     room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -187,9 +188,9 @@
       (when (some? room)
         (let
           [^Channel ch (:socket arg)
-           src {:puid (.id plyr)
-                :room (.id room)
-                :game (.id game)
+           src {:gameid (sname (.id game))
+                :roomid (.id room)
+                :puid (.id plyr)
                 :pnum (.number pss)}
            evt (privateEvent<> Events/PLAYREQ_OK src)]
           (.bind pss arg)
@@ -203,8 +204,8 @@
           (if (.canOpen room)
             (do
               (log/debug "room has enough players, can open")
-              (addGameRoom room)
               (log/debug "room.canOpen = true")
+              (addGameRoom room)
               (.open room))
             (addFreeRoom room))))
       pss)))
@@ -217,7 +218,8 @@
   {:pre [(some? plyr)]}
 
   (locking _room_mutex_
-    (let [^Arena
+    (let [gameid (keyword gameid)
+          ^Arena
           room (or (lookupGameRoom gameid roomid)
                    (lookupFreeRoom gameid roomid))
           ^Info
@@ -227,9 +229,9 @@
                  (< (.countPlayers room)
                     (.maxPlayers game)))
         (let [pss (.connect room plyr)
-              src {:puid (.id plyr)
-                   :room (.id room)
-                   :game (.id game)
+              src {:gameid (sname (.id game))
+                   :roomid (.id room)
+                   :puid (.id plyr)
                    :pnum (.number pss)}
               evt (privateEvent<> Events/JOINREQ_OK src)]
           (.bind pss arg)
@@ -239,8 +241,8 @@
           (if (.canOpen room)
             (do
               (log/debug "room has enough players, can open")
-              (addGameRoom room)
               (log/debug "room.canOpen = true")
+              (addGameRoom room)
               (.open room))
             (addFreeRoom room))
           pss)))))

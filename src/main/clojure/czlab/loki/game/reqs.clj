@@ -42,9 +42,10 @@
   (let [rcb (if (some? source)
               (I18N/bundle (.. source server id)))
         {:keys [gameid principal credential]} body]
-    (if (hgl? gameid)
+    (if (hgl? (sname gameid))
       (let
-        [g (lookupGame gameid)
+        [gameid (keyword gameid)
+         g (lookupGame gameid)
          p (if (some? g)
              (lookupPlayer principal
                            (charsit credential)))
@@ -85,10 +86,11 @@
   (let [rcb (if (some? source)
               (I18N/bundle (.. source server id)))
         {:keys [gameid roomid principal credential]} body]
-    (if (and (hgl? gameid)
+    (if (and (hgl? (sname gameid))
              (hgl? roomid))
       (let
         [p (lookupPlayer principal credential)
+         gameid (keyword gameid)
          pss (some-> p (joinRoom  gameid roomid nil))]
         (cond
           (nil? p)

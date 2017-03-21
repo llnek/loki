@@ -209,7 +209,7 @@
              (not= nn id)
              (nil? c4))))
 
-  (is (let [gid (keyword "game-1")
+  (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :principal  "u1"
@@ -227,16 +227,13 @@
                  (== 1 (countGameRooms gid))
                  (== 0 (countFreeRooms gid))
                  (not (.canOpen r1)))
-            _ (prn!! "OK = %s" ok)
-            _ (prn!! "%s , %s" (countGameRooms gid)
-                     (countFreeRooms gid))
             _ (clearFreeRooms gid)
             _ (clearGameRooms gid)]
         (and ok
              (== 0 (countGameRooms gid))
              (== 0 (countFreeRooms gid)))))
 
-  (is (let [gid (keyword "game-1")
+  (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :principal  "u3"
@@ -250,7 +247,7 @@
         (and ok
              (== 0 (countFreeRooms gid)))))
 
-  (is (let [gid (keyword "game-1")
+  (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :principal  "u4"
@@ -258,8 +255,8 @@
             ^Room r (some-> s .room)
             na (not (.canOpen r))
             t (doJoinReq {:source (mockPluglet)
-                          :body {:gameid gid
-                                 :roomid (some-> r (.id))
+                          :body {:roomid (some-> r .id)
+                                 :gameid gid
                                  :principal  "u5"
                                  :credential "p5"}})
             r2 (some-> t .room)]
@@ -267,7 +264,7 @@
              (some? r2)
              na
              (identical? r r2)
-             (.canOpen r2)
+             (not (.canOpen r2))
              (== 1 (countGameRooms gid))
              (== 0 (countFreeRooms gid))
              (do->true (clearGameRooms gid))
