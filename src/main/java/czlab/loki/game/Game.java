@@ -10,37 +10,44 @@
 
 package czlab.loki.game;
 
-import czlab.jasal.Identifiable;
-import czlab.jasal.Nameable;
+import czlab.loki.sys.Session;
+import czlab.jasal.Initable;
+import czlab.jasal.Hierarchial;
 
 /**
  * @author Kenneth Leung
  */
-public interface GameMeta extends Identifiable, Nameable {
+public interface Game extends Initable {
 
   /**
    */
-  public boolean supportNetwork();
+  public void startRound(Object arg);
 
   /**
    */
-  public Object implClass();
+  public Object playerGist(Object id);
 
   /**
    */
-  public int maxPlayers();
+  public void endRound();
 
   /**
    */
-  public int minPlayers();
+  public void start(Object arg);
 
   /**
    */
-  public Object gist();
+  public void stop();
 
   /**
    */
-  public Object unload();
+  public void restart(Object arg);
+
+
+  /**
+   */
+  public Object onEvent(Object evt);
 
 }
+
 

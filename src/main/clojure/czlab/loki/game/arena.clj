@@ -24,7 +24,7 @@
 
   (:import [czlab.jasal Identifiable Sendable Dispatchable]
            [java.util.concurrent.atomic AtomicInteger]
-           [czlab.loki.game GameImpl GameMeta Arena]
+           [czlab.loki.game Game Info Arena]
            [czlab.loki.sys Session]
            [czlab.wabbit.ctl Pluglet]
            [czlab.loki.net Events Subr PubSub]))
@@ -49,7 +49,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- fmtStartBody [^GameImpl impl sessions]
+(defn- fmtStartBody [^Game impl sessions]
   (preduce<map>
     #(let [^Session s %2
            sn (.number s)
@@ -63,7 +63,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn arena<>
-  "" ^Arena [^GameMeta gameObj {:keys [source]}]
+  "" ^Arena [^Info gameObj {:keys [source]}]
 
   (let [state (atom {:shutting? false
                      :opened? false
@@ -114,7 +114,7 @@
       (open [this]
         (let [sss (sort-by #(.number ^Session %)
                            (vals @sessions))
-              ^GameImpl
+              ^Game
               g (.callEx crt
                          (strKW (.implClass gameObj))
                          (vargs* Object this sss))]
@@ -152,7 +152,7 @@
       (start [_ arg]
         (log/info "arena#start called")
         (swap! state assoc :enabled? true)
-        (.start ^GameImpl (:impl @state) arg))
+        (.start ^Game (:impl @state) arg))
       (start [_] (.start _ nil))
 
       (stop [_]
@@ -188,7 +188,7 @@
                 (and (.isActive this)
                      (some? @latch)
                      (empty? @latch))
-                (.onEvent ^GameImpl (:impl @state) evt))))))
+                (.onEvent ^Game (:impl @state) evt))))))
 
       Object
 

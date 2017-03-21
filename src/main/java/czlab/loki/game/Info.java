@@ -8,15 +8,39 @@
  * You must not remove this notice, or any other, from this software.
  */
 
-package czlab.loki.chat;
+package czlab.loki.game;
 
-import czlab.loki.sys.Room;
+import czlab.jasal.Identifiable;
+import czlab.jasal.Nameable;
 
 /**
  * @author Kenneth Leung
  */
-public interface ChatRoom extends Room {
+public interface Info extends Identifiable, Nameable {
+
+  /**
+   */
+  public boolean supportNetwork();
+
+  /**
+   */
+  public Object implClass();
+
+  /**
+   */
+  public int maxPlayers();
+
+  /**
+   */
+  public int minPlayers();
+
+  /**
+   */
+  public Object gist();
+
+  /**
+   */
+  public Object unload();
 
 }
-
 

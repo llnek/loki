@@ -23,7 +23,7 @@
         [czlab.loki.game.arena])
 
   (:import [czlab.loki.sys Room Player Session]
-           [czlab.loki.game Arena GameMeta]
+           [czlab.loki.game Arena Info]
            [czlab.wabbit.ctl Pluglet]
            [io.netty.channel Channel]
            [clojure.lang Keyword]
@@ -167,7 +167,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- newFreeRoom
-  "" ^Room [^GameMeta game options]
+  "" ^Room [^Info game options]
 
   (let [room (arena<> game options)]
     (log/debug "created a new play room: %s" (.id room))
@@ -176,7 +176,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn openRoom
-  "" ^Session [^GameMeta game ^Player plyr arg]
+  "" ^Session [^Info game ^Player plyr arg]
 
   (locking _room_mutex_
     (let [^Arena
@@ -220,7 +220,7 @@
     (let [^Arena
           room (or (lookupGameRoom gameid roomid)
                    (lookupFreeRoom gameid roomid))
-          ^GameMeta
+          ^Info
           game (some-> room .game)
           ch (:socket arg)]
       (when (and room

@@ -26,7 +26,7 @@
         [czlab.basal.str]
         [clojure.test])
 
-  (:import [czlab.loki.game GameRoom GameImpl]
+  (:import [czlab.loki.game Game]
            [io.netty.handler.codec.http.websocketx
             WebSocketFrame TextWebSocketFrame]
            [czlab.wabbit.sys Execvisor]
@@ -45,10 +45,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- mockDelegate "" ^GameImpl []
-  (reify GameImpl
+(defn- mockDelegate "" ^Game []
+  (reify Game
+    (playerGist[_ _])
     (onEvent [_ _])
     (restart [_ _])
+    (init [_ _])
     (start [_ _])
     (stop [_])
     (startRound [_ _])
@@ -125,17 +127,15 @@
     :pubdate #inst "2016-01-01"
     :author "llnek"
     :network {
-      :enabled true
+      :enabled? true
       :minp 2
       :maxp 2
       :impl  :czlab.test.loki.test/testArena}
-    :status true
-    :uri "/arena/test"
     :image "ui/catalog.png"}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn testArena "" ^GameImpl [_ _ ] (mockDelegate))
+(defn testArena "" ^Game [_ _ ] (mockDelegate))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -209,7 +209,7 @@
              (not= nn id)
              (nil? c4))))
 
-  (is (let [gid "game-1"
+  (is (let [gid (keyword "game-1")
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :principal  "u1"
@@ -226,19 +226,22 @@
                  (identical? r1 r2)
                  (== 1 (countGameRooms gid))
                  (== 0 (countFreeRooms gid))
-                 (.isOpen r1))
+                 (not (.canOpen r1)))
+            _ (prn!! "OK = %s" ok)
+            _ (prn!! "%s , %s" (countGameRooms gid)
+                     (countFreeRooms gid))
             _ (clearFreeRooms gid)
             _ (clearGameRooms gid)]
         (and ok
              (== 0 (countGameRooms gid))
              (== 0 (countFreeRooms gid)))))
 
-  (is (let [gid "game-1"
+  (is (let [gid (keyword "game-1")
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :principal  "u3"
                                  :credential "p3"}})
-            ^GameRoom r (some-> s .room)
+            ^Room r (some-> s .room)
             ok
             (and (some? r)
                  (== 1 (countFreeRooms gid))
@@ -247,14 +250,13 @@
         (and ok
              (== 0 (countFreeRooms gid)))))
 
-  (is (let [gid "game-1"
+  (is (let [gid (keyword "game-1")
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :principal  "u4"
                                  :credential "p4"}})
-            ^GameRoom r (some-> s .room)
+            ^Room r (some-> s .room)
             na (not (.canOpen r))
-            nok (not (.isOpen r))
             t (doJoinReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :roomid (some-> r (.id))
@@ -264,9 +266,8 @@
         (and (some? r)
              (some? r2)
              na
-             nok
              (identical? r r2)
-             (.isOpen r2)
+             (.canOpen r2)
              (== 1 (countGameRooms gid))
              (== 0 (countFreeRooms gid))
              (do->true (clearGameRooms gid))

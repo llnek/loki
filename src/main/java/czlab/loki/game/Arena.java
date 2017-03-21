@@ -28,7 +28,7 @@ public interface Arena extends Room, Startable, Restartable {
 
   /**
    */
-  public GameMeta game();
+  public Info game();
 
   /**
    */

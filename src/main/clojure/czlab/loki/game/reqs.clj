@@ -28,7 +28,7 @@
            [czlab.jasal Muble I18N XData]
            [io.netty.channel Channel]
            [czlab.loki.net Events]
-           [czlab.loki.game GameMeta]))
+           [czlab.loki.game Info]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -89,7 +89,7 @@
              (hgl? roomid))
       (let
         [p (lookupPlayer principal credential)
-         pss (some-> p (joinRoom gameid roomid))]
+         pss (some-> p (joinRoom  gameid roomid nil))]
         (cond
           (nil? p)
           (do->nil
