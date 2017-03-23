@@ -57,6 +57,10 @@ public interface Session extends Closeable
    */
   public long number();
 
+  /**
+   */
+  public Object settings();
+
 }
 
 

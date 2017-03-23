@@ -91,7 +91,7 @@
       (let
         [p (lookupPlayer principal credential)
          gameid (keyword gameid)
-         pss (some-> p (joinRoom  gameid roomid nil))]
+         pss (some-> p (joinRoom  gameid roomid evt))]
         (cond
           (nil? p)
           (do->nil

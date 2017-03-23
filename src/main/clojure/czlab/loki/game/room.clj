@@ -183,8 +183,9 @@
     (let [^Arena
           room (or (lookupFreeRoom (.id game))
                    (newFreeRoom game arg))
+          s (:settings arg)
           ^Session
-          pss (some-> room (.connect plyr))]
+          pss (some-> room (.connect plyr s))]
       (when (some? room)
         (let
           [^Channel ch (:socket arg)
@@ -224,11 +225,12 @@
                    (lookupFreeRoom gameid roomid))
           ^Info
           game (some-> room .game)
+          s (:settings arg)
           ch (:socket arg)]
       (when (and room
                  (< (.countPlayers room)
                     (.maxPlayers game)))
-        (let [pss (.connect room plyr)
+        (let [pss (.connect room plyr s)
               src {:gameid (sname (.id game))
                    :roomid (.id room)
                    :puid (.id plyr)

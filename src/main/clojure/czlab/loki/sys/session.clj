@@ -35,7 +35,7 @@
 (defn session<>
   ""
   ^Session
-  [^Room room ^Player plyr pnumber]
+  [^Room room ^Player plyr pnumber settingsArg]
   (let [impl (muble<> {:status Events/S_NOT_CONNECTED
                        :shutting? false})
         created (now<>)
@@ -63,6 +63,8 @@
       (isConnected [this] (== Events/S_CONNECTED (.status this)))
 
       (isShuttingDown [_] (bool! (.getv impl :shutting?)))
+
+      (settings [_] settingsArg)
 
       (bind [this options]
         (.setv impl :tcp (tcpSender<> (:socket options)))

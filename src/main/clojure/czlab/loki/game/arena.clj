@@ -87,8 +87,10 @@
           (.removeSession py ps)
           (.unsubscribeIfSession disp ps)))
 
-      (connect [this py]
-        (let [ps (session<> this py (.incrementAndGet pcount))
+      (connect [this py arg]
+        (let [ps (session<> this
+                            py
+                            (.incrementAndGet pcount) arg)
               _ {:puid (.id py) :pnum (.number ps)}]
           (swap! sessions assoc (.id ps) ps)
           (.addSession py ps)

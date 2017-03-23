@@ -27,15 +27,15 @@ public interface Room extends Identifiable
 
   /**
    */
+  public Session connect(Player p, Object settings);
+
+  /**
+   */
   public void broadcast(Object networkEvent);
 
   /**
    */
   public void disconnect(Session s);
-
-  /**
-   */
-  public Session connect(Player p);
 
   /**
    */
