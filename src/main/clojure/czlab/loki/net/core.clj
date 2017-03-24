@@ -206,7 +206,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn syncArena! ""
-  ([room body] (pokeMove! room body nil))
+  ([room body] (syncArena! room body nil))
   ([^Room room body arg]
    (->>
      (if arg
