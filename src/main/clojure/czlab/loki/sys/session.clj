@@ -36,7 +36,7 @@
   ""
   ^Session
   [^Room room ^Player plyr pnumber settingsArg]
-  (let [impl (muble<> {:status 0
+  (let [impl (muble<> {:status false
                        :shutting? false})
         created (now<>)
         sid (str "session#" (seqint2))]

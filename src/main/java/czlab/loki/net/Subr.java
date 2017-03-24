@@ -20,7 +20,7 @@ public interface Subr extends Receivable {
 
   /**
    */
-  public int eventType();
+  public Events eventType();
 
   /**
    */

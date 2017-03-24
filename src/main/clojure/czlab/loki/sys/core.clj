@@ -44,8 +44,7 @@
         {:keys [type code] :as req}
         (->> {:socket ch
               :source (.source ws)}
-             (decodeEvent (.. ws
-                              body strit)))]
+             (decodeEvent (.. ws body strit)))]
     (cond
       (and (isPrivate? req)
            (isCode? Events/PLAYGAME_REQ req))

@@ -34,19 +34,34 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+(defn prettyEvent
+  "Pretty print the event"
+  ^String [evt] {:pre [(map? evt)]}
+
+  (let [{:keys [type code status]}
+        evt
+        m {:type (str type)
+           :code (str code)
+           :status (str status)}]
+    (writeJsonStr (merge evt m))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 (defn encodeEventAsJson
   "Turn data into a json string"
   ^String
   [{:keys [timestamp status
            type code body] :as evt}]
-  {:pre [(number? status)
-         (number? type)(number? code)]}
-  (let [m {:status status
-           :type type
-           :code code
-           :body (or body {})
-           :timestamp (or timestamp (now<>))}]
-    (writeJsonStr m)))
+  {:pre [(some? type)(some? code)]}
+  (let [msg {:type (.value ^Events type)
+             :code (.value ^Events code)
+             :body (or body {})
+             :timestamp (or timestamp (now<>))}]
+    (-> (if status
+          (assoc msg
+                 :status
+                 (.value ^Events status)) msg)
+        writeJsonStr)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -65,11 +80,18 @@
   ([data extras]
    (log/debug "decoding json: %s" data)
    (try!
-     (let [evt (readJsonStrKW data)]
-       (when-not (number? (:type evt))
-         (trap! EventError
-                (format "Event type info: %d" (:type evt))))
-       (merge evt extras)))))
+     (let [{:keys [type code] :as evt}
+           (readJsonStrKW data)
+           t (and (number? type) (Events/get type))
+           c (and (number? code) (Events/get code))]
+       (cond
+         (or (false? t) (nil? t))
+         (trap! EventError (format "Event type info: %d" t))
+         (or (false? c) (nil? c))
+         (trap! EventError (format "Event code info: %d" c))
+         :else
+         (merge evt
+                {:type t :code c} extras))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -77,11 +99,11 @@
   "" {:tag APersistentMap}
 
   ([etype ecode body arg]
-   {:pre [(number? etype)
-          (number? ecode)]}
+   {:pre [(some? etype)
+          (some? ecode)]}
    (let [body (if (string? body) {:message body} body)
-         obj {:timestamp (now<>)
-              :status Events/ERROR
+         obj {:status Events/ERROR
+              :timestamp (now<>)
               :type etype
               :code ecode
               :body (or body {})}]
@@ -104,12 +126,12 @@
   "" {:tag APersistentMap}
 
   ([etype ecode body arg]
-   {:pre [(number? etype)
-          (number? ecode)
+   {:pre [(some? etype)
+          (some? ecode)
           (or (nil? body)
               (map? body))]}
-   (let [obj {:timestamp (now<>)
-              :status Events/OK
+   (let [obj {:status Events/OK
+              :timestamp (now<>)
               :type etype
               :code ecode
               :body (or body {})}]
@@ -146,7 +168,7 @@
   "Reply back a msg" [^Channel ch msg]
 
   (log/debug (str "reply back a msg "
-                  "type: %d, code: %d")
+                  "type: %s, code: %s")
              (:type msg) (:code msg))
   (do->nil
     (if (some? ch)
@@ -160,7 +182,6 @@
   [^Channel ch error msg]
 
   (replyEvent ch (errorObj<> Events/PRIVATE error msg)))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

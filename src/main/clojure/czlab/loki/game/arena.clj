@@ -43,8 +43,8 @@
     (eventType [_] Events/PUBLIC)
     (session [_] ps)
     (receive [me evt]
-      (if (== (.eventType me)
-              (:type evt))
+      (if (= (.eventType me)
+             (:type evt))
         (.send ps evt)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -58,7 +58,7 @@
            g (.playerGist impl yid)]
        (assoc! %1
                (keyword yid)
-               (merge {:session_number sn} g))) sessions))
+               (merge {:pnum sn} g))) sessions))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

@@ -77,8 +77,8 @@
           (cas/go-loop []
             (when-some [msg (cas/<! c)]
               (log/debug "pubsub: got msg for sub: %s" cb)
-              (if (== (.eventType cb)
-                      (:type msg))
+              (if (= (.eventType cb)
+                     (:type msg))
                 (.receive cb msg))
               (recur)))))
 

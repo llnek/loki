@@ -10,63 +10,91 @@
 
 package czlab.loki.net;
 
+import java.util.HashMap;
+import java.util.EnumSet;
+import java.util.Map;
+
 /**
  * @author Kenneth Leung
  */
-public interface Events {
+public enum Events {
 
-  // Event types
-  public static final long PROTECTED        = 1L;
-  public static final long PUBLIC         = 2L;
-  public static final long PRIVATE          = 3L;
+  PROTECTED(1),
+  PUBLIC(2),
+  PRIVATE(3),
 
   // Reply codes
-  public static final long OK         = 200L;
-  public static final long ERROR      = 500L;
+  OK(200),
+  ERROR(500),
 
   // request codes
-  public static final long PLAYGAME_REQ       = 600L;
-  public static final long PLAYREQ_OK         = 601L;
-  public static final long PLAYREQ_NOK        = 602L;
+  PLAYGAME_REQ(600),
+  PLAYREQ_OK(601),
+  PLAYREQ_NOK(602),
 
-  public static final long JOINGAME_REQ       = 651L;
-  public static final long JOINREQ_OK         = 652L;
-  public static final long JOINREQ_NOK        = 653L;
+  JOINGAME_REQ(651),
+  JOINREQ_OK(652),
+  JOINREQ_NOK(653),
 
   // user and room codes
-  public static final long USER_NOK           = 700L;
-  public static final long GAME_NOK           = 701L;
-  public static final long ROOM_NOK           = 702L;
-  public static final long ROOM_FILLED        = 703L;
-  public static final long ROOMS_FULL         = 704L;
+  USER_NOK(700),
+  GAME_NOK(701),
+  ROOM_NOK(702),
+  ROOM_FILLED(703),
+  ROOMS_FULL(704),
 
   // msg codes
-  public static final long PLAYER_JOINED      = 800L;
-  public static final long AWAIT_START        = 801L;
+  PLAYER_JOINED(800),
+  AWAIT_START(801),
 
-  public static final long CONNECTED          = 820L;
-  public static final long STARTED            = 821L;
-  public static final long CLOSED             = 822L;
+  CONNECTED(820),
+  STARTED(821),
+  CLOSED(822),
 
-  public static final long RESTART            = 840L;
-  public static final long START              = 841L;
-  public static final long STOP               = 842L;
-  public static final long START_ROUND        = 843L;
-  public static final long END_ROUND          = 844L;
+  RESTART(840),
+  START(841),
+  STOP(842),
+  START_ROUND(843),
+  END_ROUND(844),
 
-  public static final long POKE_RUMBLE        = 860L;
-  public static final long POKE_MOVE          = 861L;
-  public static final long POKE_WAIT          = 862L;
-  public static final long SYNC_ARENA         = 863L;
+  POKE_RUMBLE(860),
+  POKE_MOVE(861),
+  POKE_WAIT(862),
+  SYNC_ARENA(863),
 
-  public static final long REPLAY             = 880L;
-  public static final long PLAY_MOVE          = 881L;
-  public static final long GAME_WON          = 890L;
-  public static final long GAME_TIE          = 891L;
+  REPLAY(880),
+  PLAY_MOVE(881),
+  GAME_WON(890),
+  GAME_TIE(891),
 
   // end game
-  public static final long QUIT          = 911L;
+  QUIT(911);
 
+
+  /**
+   */
+  public int value() { return _value; }
+
+  /**
+   */
+  public static Events get(int v) {
+    return _lookup.get(v);
+  }
+
+  /**
+   */
+  private Events(int v) {
+    _value=v;
+  }
+
+
+  private static final Map<Integer,Events> _lookup = new HashMap<>();
+  private int _value;
+
+  static {
+    for (Events s : EnumSet.allOf(Events.class))
+    _lookup.put(s.value(), s);
+  }
 
 }
 

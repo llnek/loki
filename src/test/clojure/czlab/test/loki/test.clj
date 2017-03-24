@@ -40,7 +40,7 @@
 (def
   ^:private
   evt-json
-  "{\"type\" : 100, \"status\": 200, \"code\":111, \"body\": { \"a\" : 911 }}")
+  "{\"type\" : 2, \"status\": 200, \"code\":911, \"body\": { \"a\" : 911 }}")
 (def ^:private evt-body {:a 911})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -144,40 +144,39 @@
   (is (do->true
         (initGameRegistry! games-meta)))
 
-  (is (let [evt (eventObj<> 100 111 evt-body {:x 7})]
-        (and (== 100 (:type evt))
-             (== Events/OK (:status evt))
-             (== 111 (:code evt))
+  (is (let [evt (eventObj<> Events/PUBLIC  Events/QUIT evt-body {:x 7})]
+        (and (= 2 (.value ^Events (:type evt)))
+             (= Events/OK (:status evt))
+             (= 911  (.value ^Events (:code evt)))
              (map? (:body evt))
              (== 7 (:x evt)))))
 
-  (is (let [evt (errorObj<> 100 111 evt-body {:x 7})]
-        (and (== 100 (:type evt))
-             (== Events/ERROR (:status evt))
-             (== 111 (:code evt))
+  (is (let [evt (errorObj<> Events/PUBLIC Events/QUIT evt-body {:x 7})]
+        (and (= 2 (.value ^Events (:type evt)))
+             (= Events/ERROR (:status evt))
+             (= 911 (.value ^Events (:code evt)))
              (map? (:body evt))
              (== 7 (:x evt)))))
 
   (is (let [^TextWebSocketFrame
-            evt (-> (eventObj<> 100 111 evt-body)
+            evt (-> (eventObj<> Events/PUBLIC Events/QUIT  evt-body)
                     (encodeEvent ))
             s (.text evt)]
-        (and (> (.indexOf s "100") 0)
+        (and (> (.indexOf s "2") 0)
              (> (.indexOf s "200") 0)
-             (> (.indexOf s "111") 0))))
+             (> (.indexOf s "911") 0))))
 
   (is (let [^TextWebSocketFrame
-            evt (-> (eventObj<> 100 111)
+            evt (-> (eventObj<> Events/PUBLIC Events/QUIT)
                     (encodeEvent))
             s (.text evt)]
-        (and (> (.indexOf s "100") 0)
+        (and (> (.indexOf s "2") 0)
              (> (.indexOf s "200") 0)
-             (> (.indexOf s "111") 0))))
+             (> (.indexOf s "911") 0))))
 
   (is (let [evt (decodeEvent evt-json {:x 3})]
-        (and (== 100 (:type evt))
-             (== 200 (:status evt))
-             (== 111 (:code evt))
+        (and (= Events/PUBLIC (:type evt))
+             (= Events/QUIT (:code evt))
              (== 911 (get-in evt [:body :a])))))
 
   (is (some? (lookupGame "game-1")))
