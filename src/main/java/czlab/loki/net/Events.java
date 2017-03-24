@@ -67,10 +67,6 @@ public interface Events {
   // end game
   public static final long QUIT          = 911L;
 
-  // session status
-  public static final long S_NOT_CONNECTED    = 0L;
-  public static final long S_CONNECTED        = 1L;
-
 
 }
 

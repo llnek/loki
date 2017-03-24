@@ -27,14 +27,6 @@ public interface Session extends Closeable
 
   /**
    */
-  public void setStatus(int status);
-
-  /**
-   */
-  public int status();
-
-  /**
-   */
   public boolean isShuttingDown();
 
   /**

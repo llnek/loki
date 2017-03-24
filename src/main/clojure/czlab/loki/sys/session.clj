@@ -36,7 +36,7 @@
   ""
   ^Session
   [^Room room ^Player plyr pnumber settingsArg]
-  (let [impl (muble<> {:status Events/S_NOT_CONNECTED
+  (let [impl (muble<> {:status 0
                        :shutting? false})
         created (now<>)
         sid (str "session#" (seqint2))]
@@ -60,29 +60,25 @@
         (trap! Exception "Unexpected onmsg called in Session."))
         ;;(log/debug "player session " sid " , onmsg called: " evt))
 
-      (isConnected [this] (== Events/S_CONNECTED (.status this)))
-
       (isShuttingDown [_] (bool! (.getv impl :shutting?)))
+      (isConnected [this] (bool! (.getv impl :status)))
 
       (settings [_] settingsArg)
 
       (bind [this options]
         (.setv impl :tcp (tcpSender<> (:socket options)))
         (.setv impl :parent (:source options))
-        (.setStatus this Events/S_CONNECTED))
+        (.setv impl :status true))
 
       (id [_] sid)
-
-      (setStatus [_ s] (.setv impl :status s))
-      (status [_] (.getv impl :status))
 
       (close [this]
         (when (.isConnected this)
           (.setv impl :shutting? true)
           (closeQ (.getv impl :tcp))
           (.unsetv impl :tcp)
-          (.setv impl :shutting? false)
-          (.setv impl :status Events/S_NOT_CONNECTED)))
+          (.setv impl :status false)
+          (.setv impl :shutting? false)))
 
       Object
 
