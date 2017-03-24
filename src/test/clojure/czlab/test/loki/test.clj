@@ -212,10 +212,12 @@
   (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
+                                 :settings {:a 1}
                                  :principal  "u1"
                                  :credential "p1"}})
             t (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
+                                 :settings {:b 2}
                                  :principal  "u2"
                                  :credential "p2"}})
             r1 (some-> s .room)
@@ -224,6 +226,8 @@
             (and (some? r1)
                  (some? r2)
                  (identical? r1 r2)
+                 (= 1 (:a (.settings s)))
+                 (= 2 (:b (.settings t)))
                  (== 1 (countGameRooms gid))
                  (== 0 (countFreeRooms gid))
                  (not (.canOpen r1)))

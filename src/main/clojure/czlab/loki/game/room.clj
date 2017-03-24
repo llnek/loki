@@ -183,7 +183,7 @@
     (let [^Arena
           room (or (lookupFreeRoom (.id game))
                    (newFreeRoom game arg))
-          s (:settings arg)
+          s (get-in arg [:body :settings])
           ^Session
           pss (some-> room (.connect plyr s))]
       (when (some? room)
@@ -219,13 +219,13 @@
   {:pre [(some? plyr)]}
 
   (locking _room_mutex_
-    (let [gameid (keyword gameid)
+    (let [s (get-in arg [:body :settings])
+          gameid (keyword gameid)
           ^Arena
           room (or (lookupGameRoom gameid roomid)
                    (lookupFreeRoom gameid roomid))
           ^Info
           game (some-> room .game)
-          s (:settings arg)
           ch (:socket arg)]
       (when (and room
                  (< (.countPlayers room)
