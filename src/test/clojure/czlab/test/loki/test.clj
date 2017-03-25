@@ -16,6 +16,7 @@
 
   (:use [czlab.loki.sys.session]
         [czlab.loki.sys.player]
+        [czlab.loki.sys.util]
         [czlab.loki.game.core]
         [czlab.loki.game.room]
         [czlab.loki.game.reqs]
@@ -272,6 +273,8 @@
              (== 0 (countFreeRooms gid))
              (do->true (clearGameRooms gid))
              (do->true (clearFreeRooms gid)))))
+
+  (is (== 90 (rad->deg (deg->rad 90))))
 
   (is (string? "That's all folks!")))
 

@@ -17,12 +17,45 @@
         [czlab.basal.core]
         [czlab.basal.str])
 
-  (:import [io.netty.util AttributeKey]))
+  (:import [clojure.lang APersistentVector]
+           [io.netty.util AttributeKey]
+           [java.lang Math]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 (defonce ^AttributeKey PSSN (akey<> "play-session"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn deg->rad "" [deg] (* deg (/ Math/PI 180)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn rad->deg "" [rad] (* rad (/ 180 Math/PI)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn dxdy
+  "Calculate object's positional deltas after tick"
+  ^APersistentVector
+  [{:keys [speed theta] :as obj} dt]
+
+  [(* dt speed (Math/cos theta))
+   (* dt speed (Math/sin theta))])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn moveObject!
+  "Move object to new position after tick"
+  ([obj dt] (moveObject! obj dt true))
+  ([{:keys [x y] :as obj} dt openGL?]
+   (let [[dx dy] (dxdy obj dt)]
+     (if openGL?
+       (merge obj {:x (+ x dx)
+                   :y (+ y dy)})
+       (merge obj {:x (+ x dx)
+                   :y (- y dy)})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
