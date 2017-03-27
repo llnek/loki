@@ -63,7 +63,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn arena<>
-  "" ^Arena [^Info gameObj {:keys [source]}]
+  "" ^Arena [^Info gameObj finzer {:keys [source]}]
 
   (let [state (atom {:shutting? false
                      :opened? false
@@ -107,11 +107,12 @@
       (id [_] rid)
 
       (close [_]
+        (log/debug "closing room(arena) [%s]" rid)
         (doseq [^Session v (vals @sessions)]
           (-> (.player v)
               (.removeSession v))
           (closeQ v))
-        (reset! sessions {}))
+        (finzer rid))
 
       (open [this]
         (let [sss (sort-by #(.number ^Session %)
@@ -190,7 +191,14 @@
                 (and (.isActive this)
                      (some? @latch)
                      (empty? @latch))
-                (.onEvent ^Game (:impl @state) evt))))))
+                (do
+                  (.onEvent ^Game (:impl @state) evt)
+                  (when (isQuit? evt)
+                    (log/debug "QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ")
+                    (->> (publicEvent<> Events/PLAY_SCRUBBED
+                                        {:pnum (.number ss)})
+                         (.broadcast this))
+                    (.close this))))))))
 
       Object
 

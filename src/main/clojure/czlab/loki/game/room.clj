@@ -170,7 +170,8 @@
 (defn- newFreeRoom
   "" ^Room [^Info game options]
 
-  (let [room (arena<> game options)]
+  (let [p (partial removeGameRoom (.id game))
+        room (arena<> game p options)]
     (log/debug "created a new room(F): %s" (.id room))
     room))
 

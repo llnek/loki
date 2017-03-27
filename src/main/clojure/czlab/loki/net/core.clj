@@ -185,6 +185,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+(defn isQuit? "" [evt]
+  (and (isPrivate? evt)
+       (isCode? Events/QUIT evt)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 (defn isMove? "" [evt]
   (and (isPrivate? evt)
        (isCode? Events/PLAY_MOVE evt)))

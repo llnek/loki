@@ -64,6 +64,8 @@ public enum Events {
 
   REPLAY(880),
   PLAY_MOVE(881),
+  PLAY_SCRUBBED(882),
+
   GAME_WON(890),
   GAME_TIE(891),
 

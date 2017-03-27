@@ -84,6 +84,8 @@
 
       (hashCode [_] (.hashCode sid))
 
+      (toString [_] sid)
+
       (equals [this obj]
         (if (nil? obj)
           false
