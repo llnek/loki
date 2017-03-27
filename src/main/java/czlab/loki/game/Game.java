@@ -43,7 +43,6 @@ public interface Game extends Initable {
    */
   public void restart(Object arg);
 
-
   /**
    */
   public Object onEvent(Object evt);

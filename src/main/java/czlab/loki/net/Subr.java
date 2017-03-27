@@ -10,13 +10,14 @@
 
 package czlab.loki.net;
 
-import czlab.loki.sys.Session;
+import czlab.jasal.Identifiable;
 import czlab.jasal.Receivable;
+import czlab.loki.sys.Session;
 
 /**
  * @author Kenneth Leung
  */
-public interface Subr extends Receivable {
+public interface Subr extends Receivable, Identifiable {
 
   /**
    */

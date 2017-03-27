@@ -50,6 +50,7 @@ public enum Events {
   CONNECTED(820),
   STARTED(821),
   CLOSED(822),
+  TEAR_DOWN(823),
 
   RESTART(840),
   START(841),

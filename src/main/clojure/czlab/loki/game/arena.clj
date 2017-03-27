@@ -39,13 +39,16 @@
 (defn- localSubr<>
   "" ^Subr [^Session ps]
 
-  (reify Subr
-    (eventType [_] Events/PUBLIC)
-    (session [_] ps)
-    (receive [me evt]
-      (if (= (.eventType me)
-             (:type evt))
-        (.send ps evt)))))
+  (let [sid (jid<>)]
+    (reify Subr
+      (eventType [_] Events/PUBLIC)
+      (session [_] ps)
+      (id [_] sid)
+      (receive [me evt]
+        (when (= (.eventType me)
+                 (:type evt))
+          (log/debug "sub[%s]: got msg to send: %s" sid evt)
+          (.send ps evt))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -191,13 +194,14 @@
                 (and (.isActive this)
                      (some? @latch)
                      (empty? @latch))
-                (do
-                  (.onEvent ^Game (:impl @state) evt)
-                  (when (isQuit? evt)
-                    (log/debug "QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ")
+                (let [rc (.onEvent ^Game
+                                   (:impl @state) evt)]
+                  (when (and (isQuit? evt)
+                             (= rc Events/TEAR_DOWN))
                     (->> (publicEvent<> Events/PLAY_SCRUBBED
                                         {:pnum (.number ss)})
                          (.broadcast this))
+                    (pause 1000)
                     (.close this))))))))
 
       Object

@@ -62,9 +62,8 @@
           (.unsubscribe me cb)))
 
       (publish [_ msg]
-        (log/debug "pub message ==== %s" msg)
-        (doseq [c (vals @handlers)]
-          (cas/go (cas/>! c msg))))
+        (log/debug "pub msg = %s" (:code msg))
+        (doseq [[_ c] @handlers] (cas/go (cas/>! c msg))))
 
       (unsubscribe [_ cb]
         (when-some [c (@handlers cb)]
@@ -76,7 +75,6 @@
           (swap! handlers assoc cb c)
           (cas/go-loop []
             (when-some [msg (cas/<! c)]
-              (log/debug "pubsub: got msg for sub: %s" cb)
               (if (= (.eventType cb)
                      (:type msg))
                 (.receive cb msg))
