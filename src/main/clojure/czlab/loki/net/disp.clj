@@ -36,17 +36,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn tcpSender<>
-  "" ^MsgSender [^Channel ch]
+(defn sendMsg "" [socket msg]
+  (some-> socket
+          (.writeAndFlush (encodeEvent msg))))
 
-  (reify MsgSender
-    (send [_ evt]
-      (some-> ch (.writeAndFlush (encodeEvent evt))))
-    (isReliable [_] true)
-    (socket [_] ch)
-    (close [_]
-      (log/debug "closing tcp: %s" ch)
-      (closeQ ch))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn close "" [socket]
+  (closeQ socket))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

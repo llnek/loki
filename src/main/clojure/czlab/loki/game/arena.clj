@@ -36,19 +36,32 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- localSubr<>
-  "" ^Subr [^Session ps]
+(deftype Subr [data]
+  Object
+  (toString [me] (.id me))
+  Identifiable
+  (id [_] (:id data))
+  Receivable
+  (receive [me evt]
+    (when (= (:type (.state me))
+             (:type evt))
+      (log/debug "[%s]: recv'ed msg: %s" me evt)
+      (send! (:session (.state me)) evt)))
+  Stateful
+  (state [_] data))
 
-  (let [sid (jid<>)]
-    (reify Subr
-      (eventType [_] Events/PUBLIC)
-      (session [_] ps)
-      (id [_] sid)
-      (receive [me evt]
-        (when (= (.eventType me)
-                 (:type evt))
-          (log/debug "sub[%s]: got msg to send: %s" sid evt)
-          (.send ps evt))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defmacro defsubr "" [session]
+  (let [id (str "subr#" (seqint2))]
+    `(Subr. (atom {:type Events/PUBLIC
+                   :session ~session
+                   :id ~id}))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn createSubr "" [session]
+  (defsubr session))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -62,6 +75,38 @@
        (assoc! %1
                (keyword yid)
                (merge {:pnum sn} g))) sessions))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(deftype Room [data]
+  Identifiable
+  (id [_] (:id @data))
+  IDeref
+  (deref [_] @data)
+  Stateful
+  (state [_] data))
+
+(defmacro defarena "" [gameInfo finzer]
+  (let [rid (str "room#" (seqint2))]
+    `(Room. (atom {:numctr (AtomicInteger.)
+                   :shutting? false
+                   :opened? false
+                   :active? false
+                   :id ~rid}))))
+
+(defn connect "" [room player arg]
+  (let [{:keys [conns numctr]}
+        @room
+        n (. ^AtomicInteger
+             numctr
+             incrementAndGet)
+        s (defconn room
+                   player
+                   (merge arg
+                          {:number n}))]
+    (swap! conns assoc (.id s) s)
+    (addTo @player s)
+    s))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -89,15 +134,6 @@
           (swap! sessions dissoc (.id ps))
           (.removeSession py ps)
           (.unsubscribeIfSession disp ps)))
-
-      (connect [this py arg]
-        (let [ps (session<> this
-                            py
-                            (.incrementAndGet pcount) arg)
-              _ {:puid (.id py) :pnum (.number ps)}]
-          (swap! sessions assoc (.id ps) ps)
-          (.addSession py ps)
-          ps))
 
       (isShuttingDown [_] (bool! (:shutting? @state)))
 
