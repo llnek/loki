@@ -30,70 +30,94 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(def ^:private sessions-db (atom {}))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn session<>
-  ""
-  ^Session
-  [^Room room ^Player plyr pnumber settingsArg]
-  (let [impl (muble<> {:status false
-                       :shutting? false})
-        created (now<>)
-        sid (str "session#" (seqint2))]
-    (reify Session
+(deftype Session [data]
+  Identifiable
+  (id [_] (:id data))
+  Stateful
+  (state [_] data)
+  Object
+  (hashCode [me] (.hashCode (.id me)))
+  (toString [me] (.id me))
+  (equals [me obj]
+    (if (nil? obj)
+      false
+      (or (identical? me obj)
+          (and (= (.getClass me)
+                  (.getClass obj))
+               (= (.id ^Identifiable obj)
+                  (.id me)))))))
 
-      (parent [_] (.getv impl :parent))
-      (setParent [_ _])
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defmacro defsession "" [room player settings]
+  (let [sid (jid<>)]
+    `(Session. (atom
+                 (merge settings
+                        {:shutting? false
+                         :status false
+                         :parent nil
+                         :tcp nil
+                         :created (now<>)
+                         :id sid :room room :player player})))))
 
-      (number [_] pnumber)
-      (player [_] plyr)
-      (room [_] room)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn create "" [room player settings]
+  (let [s (defsession room player settings)]
+    (swap! sessions-db assoc (.id s) s)))
 
-      (send [this msg]
-        (when (and (not (.isShuttingDown this))
-                   (.isConnected this))
-          (-> ^MsgSender
-              (.getv impl :tcp)
-              (.send msg))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn send! [ss msg]
+  (let [{tcp shutting? status} (.state ss)]
+    (if (and status
+             (not shutting?))
+      (-> ^MsgSender tcp (.send msg)))))
 
-      (receive [this evt]
-        (trap! Exception "Unexpected onmsg called in Session."))
-        ;;(log/debug "player session " sid " , onmsg called: " evt))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn connect [ss options]
+  (swap! (.state ss)
+         assoc
+         :status true
+         :parent (:source options)
+         :tcp (tcpSender<> (:socket options))))
 
-      (isShuttingDown [_] (bool! (.getv impl :shutting?)))
-      (isConnected [this] (bool! (.getv impl :status)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn close "" [ss]
+  (let [{:keys [tcp] :as s} (.state ss)]
+    (when (:status s)
+      (closeQ tcp)
+      (swap! s
+             assoc
+             :tcp nil
+             :status false ))))
 
-      (settings [_] settingsArg)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn addTo "Add a session to this player"
+  [{:keys [id] :as player} session]
+  (swap! @sessions-db
+         update-in
+         [id]
+         assoc
+         (.id ^Identifiable session) session))
 
-      (bind [this options]
-        (.setv impl :tcp (tcpSender<> (:socket options)))
-        (.setv impl :parent (:source options))
-        (.setv impl :status true))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn purgeAll
+  "Delete all sessions for this player"
+  [{:keys [id] :as player}]
 
-      (id [_] sid)
-
-      (close [this]
-        (when (.isConnected this)
-          (.setv impl :shutting? true)
-          (closeQ (.getv impl :tcp))
-          (.unsetv impl :tcp)
-          (.setv impl :status false)
-          (.setv impl :shutting? false)))
-
-      Object
-
-      (hashCode [_] (.hashCode sid))
-
-      (toString [_] sid)
-
-      (equals [this obj]
-        (if (nil? obj)
-          false
-          (or (identical? this obj)
-              (and (= (.getClass this)
-                      (.getClass obj))
-                   (= (.id ^Session obj)
-                      (.id this)))))))))
+  (let [m (@sessions-db id)]
+    (swap! @sessions-db dissoc id)
+    (doall
+      (map #(closeQ %) m))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

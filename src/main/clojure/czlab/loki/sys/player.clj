@@ -14,14 +14,17 @@
   (:require [czlab.basal.logging :as log])
 
   (:use [czlab.basal.core]
+        [czlab.basal.protos]
         [czlab.basal.io]
         [czlab.basal.str])
 
-  (:import [czlab.loki.sys Player Session]))
+  (:import [czlab.jasal Identifiable]
+           [czlab.loki.sys Session]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; player-db
 ;; {player-id -> {:p player :s {id -> session}}}
@@ -29,87 +32,52 @@
 ;; map of nicknames
 (def ^:private userid-db (atom {}))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn removePlayer
-  "Remove player and
-  close all his sessions" ^Player [user]
+(deftype Player [data]
+  Identifiable
+  (id [_] (:id data))
+  Stateful
+  (state [_] data))
 
-  (let [pid (get @userid-db user)
-        m (get @player-db pid)]
-    (when (some? m)
-      (swap! player-db dissoc pid)
-      (doseq [[_ v] (:s m)] (closeQ v)) (:p m))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- player<>
-  "" ^Player
-  [^String user ^chars pwd]
-  {:pre [(hgl? user)]}
+(defmacro defplayer "" [userid passwd]
+  (let [pid (uid<>)]
+    `(Player. (atom {:userid ~userid
+                     :id ~pid
+                     :passwd ~passwd}))))
 
-  (let [impl (muble<>)
-        pid (uid<>)]
-    (reify
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn create
+  "" [^String userid ^chars passwd]
+  {:pre [(hgl? userid)(not-empty passwd)]}
 
-      Player
+  (locking userid-db
+    (if-not (contains? @userid-db userid)
+      (let [p (defplayer userid passwd)
+            pid (.id p)]
+        (swap! player-db assoc pid p)
+        (swap! userid-db assoc userid pid))))
+  (@player-db (@userid-db userid)))
 
-      (nickname [_] user)
-      (id [_] pid)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn delete "" [userid]
 
-      (removeSession [_ ps]
-        (if-some [m (get @player-db pid)]
-          (swap! player-db
-                 assoc
-                 pid
-                 (update-in m
-                            [:s]
-                            dissoc (.id ps)))))
-
-      (countSessions [_]
-        (if-some [m (get @player-db pid)]
-          (int (count (:s m)))
-          (int 0)))
-
-      (addSession [_ ps]
-        (let [m (get @player-db pid)]
-          (swap! player-db
-                 assoc
-                 pid
-                 (update-in m
-                            [:s]
-                            assoc (.id ps) ps))))
-
-      (updateGist [_ g] (if (map? g)
-                          (.copyEx impl g)))
-      (gist [_] (.intern impl))
-
-      (logout [_]
-        (removePlayer user)))))
+  (locking userid-db
+    (if-some [pid (@userid-db userid)]
+      (swap! userid-db dissoc userid)
+      (swap! player-id dissoc pid))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn createPlayer
-  ""
-  ^Player
-  [^String user ^chars pwd]
-  (let [pid (get @userid-db user)
-        m (get @player-db pid)]
-    (if (some? m)
-      (:p m)
-      (let [p2 (player<> user pwd)]
-        (swap! userid-db assoc user (.id p2))
-        (swap! player-db
-               assoc (.id p2) {:p p2 :s {}})
-        p2))))
+(defn lookup ""
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn lookupPlayer "" {:tag Player}
-
-  ([user pwd] (createPlayer user pwd))
-  ([user] (->> (get @userid-db user)
-               (get @player-db) :p )))
+  ([userid pwd] (create userid pwd))
+  ([userid] (->> (@userid-db userid)
+               (@player-db))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
