@@ -19,7 +19,7 @@
         [czlab.loki.sys.util]
         [czlab.loki.net.core])
 
-  (:import [czlab.jasal Sendable Idable]
+  (:import [czlab.jasal Openable Sendable Idable]
            [io.netty.channel Channel]
            [czlab.loki.net Events]))
 
@@ -35,18 +35,19 @@
   (hashCode [me] (.hashCode (id?? me)))
   (toString [me] (id?? me))
   (equals [me obj] (objEQ? me obj))
-  Closeable
+  Openable
+  (open [_ options]
+    (do->nil
+      (swap! data
+             assoc
+             :status true
+             :src (:source options)
+             :tcp  (:socket options))))
   (close [_]
     (closeQ (:tcp @data))
     (swap! data assoc :status false :tcp nil))
   Idable
   (id [_] (:id @data))
-  (connect [_ options]
-    (swap! data
-           assoc
-           :status true
-           :parent (:source options)
-           :tcp  (:socket options)))
   Sendable
   (send [_ msg]
     (let [{:keys [tcp shutting? status]} @data]
@@ -59,14 +60,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn defsession "" [room player settings]
-  (let [sid (str "sess#" (seqint2))
+  (let [sid (toKW "sess#" (seqint2))
         s (entity<> Session
                     (merge settings
                            {:shutting? false
-                            :status false
-                            :parent nil
-                            :tcp nil
                             :created (now<>)
+                            :status false
+                            :src nil
+                            :tcp nil
                             :id sid
                             :room room
                             :player player}))]
@@ -77,6 +78,7 @@
 ;;
 (defn addSession
   "Add a session to this player" [player session]
+  {:pre [(some? player)(some? session)]}
   (swap! @sessions-db
          update-in
          [(id?? player)]
@@ -86,12 +88,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn closeAll
-  "Close all sessions for this player" [player]
+  "Close all sessions for this player"
+  [player]
+  {:pre [(some? player)]}
 
-  (when-some+ [m (@sessions-db (id?? player))]
-    (swap! @sessions-db
-           dissoc (id?? player))
-    (doseq [[_ c] m] (closeQ c))))
+  (let [pid (id?? player)]
+    (when-some+ [m (@sessions-db pid)]
+      (swap! @sessions-db dissoc pid)
+      (doseq [[_ c] m] (closeQ c)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

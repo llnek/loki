@@ -17,7 +17,7 @@
   (:use [czlab.basal.core]
         [czlab.basal.str])
 
-  (:import [czlab.loki.game Info]))
+  (:import [java.io File]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -25,6 +25,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (def ^:dynamic *game-rego* {})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defentity GameInfo
+  Idable
+  (id [_] (:id @data)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defmacro defgame-info "" [seed] `(entity<> GameInfo seed))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -36,15 +46,13 @@
             :or {minp 1 maxp 1 impl ""}}
            (:network g)
            m
-           (reify Info
-             (supportNetwork [_] (!false? enabled?))
-             (maxPlayers [_] (if (spos? maxp) (int maxp) (int 9)))
-             (minPlayers [_] (if (spos? minp) (int minp) (int 1)))
-             (name [_] (:name g))
-             (implClass [_] impl)
-             (gist [_] g)
-             (id [_] gameid)
-             (unload [_] ))]
+           (defgame-info
+             {:supportNetwork (!false? enabled?)
+              :maxPlayers (if (spos? maxp) maxp minp)
+              :minPlayers (if (spos? minp) minp 1)
+              :name (:name g)
+              :implClass impl
+              :id gameid})]
        (assoc! %1 gameid m)) games))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60,7 +68,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn lookupGame
-  "Find game from registry" ^Info [gameid]
+  "Find game from registry"
+  [gameid]
+  {:pre [(some? gameid)]}
 
   (when-some [g (*game-rego* (keyword gameid))]
     (log/debug "found game with id = %s" gameid)
@@ -68,5 +78,4 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
-
 

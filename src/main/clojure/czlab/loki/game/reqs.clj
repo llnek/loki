@@ -23,12 +23,10 @@
         [czlab.loki.game.core]
         [czlab.loki.sys.player])
 
-  (:import [czlab.loki.sys Room Player Session]
-           [czlab.wabbit.ctl Pluglet]
-           [czlab.jasal Muble I18N XData]
+  (:import [czlab.wabbit.ctl Pluglet]
+           [czlab.jasal I18N]
            [io.netty.channel Channel]
-           [czlab.loki.net Events]
-           [czlab.loki.game Info]))
+           [czlab.loki.net Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -37,11 +35,12 @@
 ;;
 (defn doPlayReq
   "source json = {:gameid, :principal, :credential}"
-  ^Session
   [{:keys [^Pluglet source socket body] :as evt}]
-  (let [rcb (if (some? source)
-              (I18N/bundle (.. source server id)))
-        {:keys [gameid principal credential]} body]
+
+  (let [{:keys [gameid principal credential]}
+        body
+        rcb (some-> source
+                    .server id?? I18N/bundle)]
     (if (hgl? (sname gameid))
       (let
         [gameid (keyword gameid)
@@ -49,10 +48,10 @@
          p (if (some? g)
              (lookupPlayer principal
                            (charsit credential)))
-         ps (if (and (some? g)
-                     (some? p)) (openRoom g p evt))
-         r (some-> ps .room)]
-        (log/debug "gameid#%s loaded as: %s" gameid g)
+         s (if (and (some? g)
+                    (some? p)) (openRoom g p evt))
+         r (some-> s .room)]
+        (log/debug "game[%s] loaded as: %s" gameid g)
         (cond
           (nil? g)
           (do->nil
@@ -81,17 +80,20 @@
 (defn doJoinReq
   "Request to join a specific game room.  Not used now.
   source json = {:gameid, :roomid, :principal, :credential}"
-  ^Session
   [{:keys [^Pluglet source socket body] :as evt}]
-  (let [rcb (if (some? source)
-              (I18N/bundle (.. source server id)))
-        {:keys [gameid roomid principal credential]} body]
+
+  (let [{:keys [gameid roomid principal credential]}
+        body
+        rcb (some-> source
+                    .server id?? I18N/bundle)]
     (if (and (hgl? (sname gameid))
-             (hgl? roomid))
+             (hgl? (sname roomid)))
       (let
         [p (lookupPlayer principal credential)
          gameid (keyword gameid)
-         pss (some-> p (joinRoom  gameid roomid evt))]
+         roomid (keyword roomid)
+         pss (some-> p
+                     (joinRoom  gameid roomid evt))]
         (cond
           (nil? p)
           (do->nil

@@ -10,12 +10,6 @@
 
 package czlab.loki.sys;
 
-import czlab.jasal.Dispatchable;
-import czlab.jasal.Idable;
-import czlab.jasal.Receivable;
-import czlab.jasal.Sendable;
-import java.io.Closeable;
-
 /**
  * @author Kenneth Leung
  */
@@ -40,10 +34,6 @@ public interface Room {
   /**
    */
   public boolean canOpen();
-
-  /**
-   */
-  public void open();
 
   /**
    */

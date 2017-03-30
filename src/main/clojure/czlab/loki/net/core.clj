@@ -22,6 +22,7 @@
             TextWebSocketFrame]
            [io.netty.channel Channel]
            [czlab.loki.sys Room]
+           [czlab.jasal Sendable]
            [clojure.lang APersistentMap]
            [czlab.loki.net Events EventError]))
 
@@ -200,25 +201,25 @@
 (defn pokeWait! ""
   ([room body] (pokeWait! room body nil))
   ([room body arg]
-   (.send ^Room room (privateEvent<> Events/POKE_WAIT body arg))))
+   (. ^Sendable room send (privateEvent<> Events/POKE_WAIT body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn pokeMove! ""
   ([room body] (pokeMove! room body nil))
   ([room body arg]
-   (.send ^Room room  (privateEvent<> Events/POKE_MOVE body arg))))
+   (. ^Sendable room send (privateEvent<> Events/POKE_MOVE body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn syncArena! ""
   ([room body] (syncArena! room body nil))
-  ([^Room room body arg]
+  ([room body arg]
    (->>
      (if arg
        (privateEvent<> Events/SYNC_ARENA body arg)
        (publicEvent<> Events/SYNC_ARENA body))
-     (.send room))))
+     (. ^Sendable room send))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

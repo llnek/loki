@@ -26,9 +26,8 @@
 
   (:import [czlab.flux.wflow Workstream Job]
            [czlab.wabbit.plugs.io WsockMsg]
+           [czlab.jasal XData Receivable]
            [czlab.loki.net Events]
-           [czlab.loki.sys Session]
-           [czlab.jasal XData]
            [java.io File]
            [io.netty.channel Channel]))
 
@@ -55,9 +54,9 @@
       (doJoinReq req)
 
       :else
-      (if-some [^Session ss (getAKey ch PSSN)]
+      (if-some [ss (getAKey ch PSSN)]
         (->> (assoc req :context ss)
-             (.receive (.room ss)))
+             (. ^Receivable (:room @ss) receive ))
         (log/error "no session attached to socket")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

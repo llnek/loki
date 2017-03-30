@@ -14,12 +14,10 @@
   (:require [czlab.basal.logging :as log])
 
   (:use [czlab.basal.core]
-        [czlab.basal.protos]
         [czlab.basal.io]
         [czlab.basal.str])
 
-  (:import [czlab.jasal Idable]
-           [czlab.loki.sys Session]))
+  (:import [czlab.jasal Idable]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -34,30 +32,28 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(deftype Player [data]
+(defentity Player
   Idable
-  (id [_] (:id data))
-  Stateful
-  (state [_] data))
+  (id [_] (:id @data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defmacro defplayer "" [userid passwd]
-  (let [pid (uid<>)]
-    `(Player. (atom {:userid ~userid
-                     :id ~pid
-                     :passwd ~passwd}))))
+  (let [pid (toKW "user#" (seqint2))]
+    `(entity<> Player {:userid ~userid
+                       :id ~pid
+                       :passwd ~passwd})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn create
-  "" [^String userid ^chars passwd]
-  {:pre [(hgl? userid)(not-empty passwd)]}
+(defn- createPlayer ""
+  [^String userid ^chars passwd]
+  {:pre [(hgl? userid)]}
 
   (locking userid-db
-    (if-not (contains? @userid-db userid)
+    (if (notin? @userid-db userid)
       (let [p (defplayer userid passwd)
-            pid (.id p)]
+            pid (id?? p)]
         (swap! player-db assoc pid p)
         (swap! userid-db assoc userid pid))))
   (@player-db (@userid-db userid)))
@@ -75,9 +71,8 @@
 ;;
 (defn lookup ""
 
-  ([userid pwd] (create userid pwd))
-  ([userid] (->> (@userid-db userid)
-               (@player-db))))
+  ([userid pwd] (createPlayer userid pwd))
+  ([userid] (-> (@userid-db userid) (@player-db))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

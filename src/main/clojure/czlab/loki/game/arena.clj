@@ -22,73 +22,85 @@
         [czlab.basal.str]
         [czlab.loki.sys.session])
 
-  (:import [czlab.jasal Idable Receivable Sendable Dispatchable]
-           [java.util.concurrent.atomic AtomicInteger]
+  (:import [czlab.jasal Idable Openable Receivable Sendable Dispatchable]
            [java.io Closeable]
-           [czlab.loki.game Game Info Arena]
-           [czlab.loki.sys Session]
+           [czlab.loki.game Game]
+           [czlab.loki.sys Room]
            [czlab.wabbit.ctl Pluglet]
-           [czlab.loki.net Events Subr PubSub]))
+           [czlab.loki.net Events PubSub]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn- fmtStartBody [^Game impl sessions]
+  (preduce<map>
+    #(let [{:keys [number player]}
+           (deref %2)
+           yid (id?? player)
+           g (.playerGist impl yid)]
+       (assoc! %1
+               yid
+               (merge {:pnum number} g))) sessions))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defentity Arena
   Openable
-  (open [me]
-    (let [{:keys [dispatcher conns gameInfo]}
+  (open [me _]
+    (let [{:keys [disp conns game]}
           @data
-          sss (sort-by #(:number (deref %)) (vals conns))
+          sss (sort-by #(:created (deref %))
+                       (vals conns))
           g (.callEx crt
-                     (strKW (:implClass @gameInfo))
+                     (strKW (:implClass @game))
                      (vargs* Object me sss))]
           (log/debug "activating room %s" me)
           (doseq [s sss]
-            (.subscribe ^PubSub dispatcher (defsubr s)))
+            (. ^PubSub disp subscribe (defsubr s)))
           (swap! data
                  assoc
                  :impl g :latch conns
+                 :starting? false
                  :opened? true :active? false)
-          (.init ^Initable g _empty-map)
+          (. ^Initable g init _empty-map)
           (bcast! me Events/START (fmtStartBody g sss))))
   (close [me]
     (log/debug "closing arena [%s]" me)
-    (doseq [[k s] (:conns @data)]
-      (removeSession s)
-      (closeQ s))
-    (swap! data assoc :conns {})
-    (finzer rid))
+    (doseq [[_ s] (:conns @data)]
+      (doto s removeSession closeQ))
+    (swap! data assoc :conns _empty-map)
+    ((:finz @data) (id?? me)))
   Idable
   (id [_] (:id @data))
   Object
-  (hashCode [_] (.hashCode (:id @data)))
+  (hashCode [me] (.hashCode (id?? me)))
   (equals [this obj] (objEQ? this obj))
-  (toString [me] (:id @data))
+  (toString [me] (id?? me))
   Restartable
   (restart [me _]
     (log/debug "arena#restart() called")
     (->> (-> (:impl @data)
              (fmtStartBody (vals (:conns @data))))
          (bcast! me Events/RESTART)))
-  (restart [_] (.restart _ nil))
+  (restart [_] (.restart _ _empty-map_))
   Startable
   (start [_ arg]
     (log/debug "arena#start called")
     (swap! data assoc :active? true)
     (. ^Startable (:impl @data) start arg))
-  (start [_] (.start _ nil))
+  (start [_] (.start _ _empty-map_))
   (stop [_]
     (swap! data assoc :active? false))
   Room
   (countPlayers [_] (count (:conns @data)))
   (broadcast [_ evt]
-    (. ^Dispatcher (:dispatcher @data) publish evt))
+    (. ^Dispatcher (:disp @data) publish evt))
   (canOpen [me]
     (and (not (:active? @data))
          (>= (.countPlayers me)
-             (.minPlayers (:gameInfo @data)))))
+             (:minPlayers (:game @data)))))
   (onEvent [me evt]
     (let [{:keys [context body]} evt
           {:keys [impl latch conns active?]} @data]
@@ -134,56 +146,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- fmtStartBody [^Game impl sessions]
-  (preduce<map>
-    #(let [^Session s %2
-           sn (.number s)
-           y (.player s)
-           yid (.id y)
-           g (.playerGist impl yid)]
-       (assoc! %1
-               (keyword yid)
-               (merge {:pnum sn} g))) sessions))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defmacro defarena "" [gameInfo finzer]
-  (let [rid (str "arena#" (seqint2))]
-    `(entity<> Arena {:numctr (AtomicInteger.)
-                      :shutting? false
+(defmacro defarena "" [game finzer]
+  (let [rid (keyword (uid<>))]
+    `(entity<> Arena {:shutting? false
                       :opened? false
-                      :conns {}
                       :active? false
+                      :disp nil
+                      :finz finzer
+                      :game game
+                      :conns {}
                       :id ~rid})))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn connect "" [^Stateful room ^Stateful player arg]
-  (let [{:keys [conns numctr]}
-        @room
-        n (. ^AtomicInteger
-             numctr
-             incrementAndGet)
-        s (defconn room
-                   player
-                   (merge arg
-                          {:number n}))]
-    (swap! (.state room)
-           update-in
-           [:conns] assoc (.id s) s)
-    (doto s addSession)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn disconnect "" [^Stateful room ^Stateful session]
-  (let [{:keys [player]} @session
-        {:keys [dispatcher]} @room]
-    (swap! (.state room)
-           update-in
-           [:conns]
-           dissoc (.id ^Idable session))
-    (removeSession session)
-    (unsubscribeIfSession dispatcher session)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

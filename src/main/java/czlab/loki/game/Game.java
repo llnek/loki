@@ -10,14 +10,14 @@
 
 package czlab.loki.game;
 
-import czlab.loki.sys.Session;
+import czlab.jasal.Restartable;
+import czlab.jasal.Startable;
 import czlab.jasal.Initable;
-import czlab.jasal.Hierarchial;
 
 /**
  * @author Kenneth Leung
  */
-public interface Game extends Initable {
+public interface Game extends Initable, Startable, Restartable {
 
   /**
    */
@@ -30,18 +30,6 @@ public interface Game extends Initable {
   /**
    */
   public void endRound();
-
-  /**
-   */
-  public void start(Object arg);
-
-  /**
-   */
-  public void stop();
-
-  /**
-   */
-  public void restart(Object arg);
 
   /**
    */
