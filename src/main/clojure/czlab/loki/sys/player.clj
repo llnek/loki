@@ -18,7 +18,7 @@
         [czlab.basal.io]
         [czlab.basal.str])
 
-  (:import [czlab.jasal Identifiable]
+  (:import [czlab.jasal Idable]
            [czlab.loki.sys Session]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35,7 +35,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (deftype Player [data]
-  Identifiable
+  Idable
   (id [_] (:id data))
   Stateful
   (state [_] data))

@@ -13,19 +13,15 @@
 
   (:require [czlab.basal.logging :as log])
 
-  (:use [czlab.basal.process]
-        [czlab.basal.core]
+  (:use [czlab.basal.core]
         [czlab.basal.str]
         [czlab.basal.io]
         [czlab.loki.sys.util]
-        [czlab.loki.net.core]
-        [czlab.loki.net.disp])
+        [czlab.loki.net.core])
 
-  (:import [czlab.loki.sys Room Player Session]
+  (:import [czlab.jasal Sendable Idable]
            [io.netty.channel Channel]
-           [czlab.jasal Hierarchial]
-           [czlab.loki.net Events]
-           [czlab.loki.net MsgSender]))
+           [czlab.loki.net Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -34,90 +30,68 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(deftype Session [data]
-  Identifiable
-  (id [_] (:id data))
-  Stateful
-  (state [_] data)
+(defentity Session
   Object
-  (hashCode [me] (.hashCode (.id me)))
-  (toString [me] (.id me))
-  (equals [me obj]
-    (if (nil? obj)
-      false
-      (or (identical? me obj)
-          (and (= (.getClass me)
-                  (.getClass obj))
-               (= (.id ^Identifiable obj)
-                  (.id me)))))))
+  (hashCode [me] (.hashCode (id?? me)))
+  (toString [me] (id?? me))
+  (equals [me obj] (objEQ? me obj))
+  Closeable
+  (close [_]
+    (closeQ (:tcp @data))
+    (swap! data assoc :status false :tcp nil))
+  Idable
+  (id [_] (:id @data))
+  (connect [_ options]
+    (swap! data
+           assoc
+           :status true
+           :parent (:source options)
+           :tcp  (:socket options)))
+  Sendable
+  (send [_ msg]
+    (let [{:keys [tcp shutting? status]} @data]
+      (if (and status
+               (not shutting?))
+        (some-> ^Channel
+                tcp
+                (.writeAndFlush (encodeEvent msg)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defmacro defsession "" [room player settings]
-  (let [sid (jid<>)]
-    `(Session. (atom
-                 (merge settings
-                        {:shutting? false
-                         :status false
-                         :parent nil
-                         :tcp nil
-                         :created (now<>)
-                         :id sid :room room :player player})))))
+(defn defsession "" [room player settings]
+  (let [sid (str "sess#" (seqint2))
+        s (entity<> Session
+                    (merge settings
+                           {:shutting? false
+                            :status false
+                            :parent nil
+                            :tcp nil
+                            :created (now<>)
+                            :id sid
+                            :room room
+                            :player player}))]
+    (doto->> s
+             (swap! sessions-db assoc (id?? s) ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn create "" [room player settings]
-  (let [s (defsession room player settings)]
-    (swap! sessions-db assoc (.id s) s)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn send! [ss msg]
-  (let [{tcp shutting? status} (.state ss)]
-    (if (and status
-             (not shutting?))
-      (-> ^MsgSender tcp (.send msg)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn connect [ss options]
-  (swap! (.state ss)
-         assoc
-         :status true
-         :parent (:source options)
-         :tcp (tcpSender<> (:socket options))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn close "" [ss]
-  (let [{:keys [tcp] :as s} (.state ss)]
-    (when (:status s)
-      (closeQ tcp)
-      (swap! s
-             assoc
-             :tcp nil
-             :status false ))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn addTo "Add a session to this player"
-  [{:keys [id] :as player} session]
+(defn addSession
+  "Add a session to this player" [player session]
   (swap! @sessions-db
          update-in
-         [id]
+         [(id?? player)]
          assoc
-         (.id ^Identifiable session) session))
+         (id?? session) session))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn purgeAll
-  "Delete all sessions for this player"
-  [{:keys [id] :as player}]
+(defn closeAll
+  "Close all sessions for this player" [player]
 
-  (let [m (@sessions-db id)]
-    (swap! @sessions-db dissoc id)
-    (doall
-      (map #(closeQ %) m))))
+  (when-some+ [m (@sessions-db (id?? player))]
+    (swap! @sessions-db
+           dissoc (id?? player))
+    (doseq [[_ c] m] (closeQ c))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

@@ -10,13 +10,13 @@
 
 package czlab.loki.game;
 
-import czlab.jasal.Identifiable;
+import czlab.jasal.Idable;
 import czlab.jasal.Nameable;
 
 /**
  * @author Kenneth Leung
  */
-public interface Info extends Identifiable, Nameable {
+public interface Info extends Idable, Nameable {
 
   /**
    */

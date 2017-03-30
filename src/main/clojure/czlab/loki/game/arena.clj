@@ -22,8 +22,9 @@
         [czlab.basal.str]
         [czlab.loki.sys.session])
 
-  (:import [czlab.jasal Identifiable Sendable Dispatchable]
+  (:import [czlab.jasal Idable Receivable Sendable Dispatchable]
            [java.util.concurrent.atomic AtomicInteger]
+           [java.io Closeable]
            [czlab.loki.game Game Info Arena]
            [czlab.loki.sys Session]
            [czlab.wabbit.ctl Pluglet]
@@ -32,36 +33,104 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(def ^:private _latch_mutex_ (Object.))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(deftype Subr [data]
+(defentity Arena
+  Openable
+  (open [me]
+    (let [{:keys [dispatcher conns gameInfo]}
+          @data
+          sss (sort-by #(:number (deref %)) (vals conns))
+          g (.callEx crt
+                     (strKW (:implClass @gameInfo))
+                     (vargs* Object me sss))]
+          (log/debug "activating room %s" me)
+          (doseq [s sss]
+            (.subscribe ^PubSub dispatcher (defsubr s)))
+          (swap! data
+                 assoc
+                 :impl g :latch conns
+                 :opened? true :active? false)
+          (.init ^Initable g _empty-map)
+          (bcast! me Events/START (fmtStartBody g sss))))
+  (close [me]
+    (log/debug "closing arena [%s]" me)
+    (doseq [[k s] (:conns @data)]
+      (removeSession s)
+      (closeQ s))
+    (swap! data assoc :conns {})
+    (finzer rid))
+  Idable
+  (id [_] (:id @data))
   Object
-  (toString [me] (.id me))
-  Identifiable
-  (id [_] (:id data))
+  (hashCode [_] (.hashCode (:id @data)))
+  (equals [this obj] (objEQ? this obj))
+  (toString [me] (:id @data))
+  Restartable
+  (restart [me _]
+    (log/debug "arena#restart() called")
+    (->> (-> (:impl @data)
+             (fmtStartBody (vals (:conns @data))))
+         (bcast! me Events/RESTART)))
+  (restart [_] (.restart _ nil))
+  Startable
+  (start [_ arg]
+    (log/debug "arena#start called")
+    (swap! data assoc :active? true)
+    (. ^Startable (:impl @data) start arg))
+  (start [_] (.start _ nil))
+  (stop [_]
+    (swap! data assoc :active? false))
+  Room
+  (countPlayers [_] (count (:conns @data)))
+  (broadcast [_ evt]
+    (. ^Dispatcher (:dispatcher @data) publish evt))
+  (canOpen [me]
+    (and (not (:active? @data))
+         (>= (.countPlayers me)
+             (.minPlayers (:gameInfo @data)))))
+  (onEvent [me evt]
+    (let [{:keys [context body]} evt
+          {:keys [impl latch conns active?]} @data]
+      (assert (some? context))
+      (cond
+        (and (not active?) (isCode? Events/REPLAY evt))
+        (locking me
+          (when (and (not (:starting? @data))
+                     (empty? (:latch @data)))
+            (swap! data assoc :latch conns :starting true)
+            (.restart me)))
+
+        (and (not active?) (isCode? Events/STARTED evt))
+        (if (in? latch (:id @context))
+          (locking me
+            (log/debug "latch: drop-off: %s" context)
+            (swap! data update-in [:latch] dissoc (:id @context))
+            (if (empty? (:latch @data))
+              (. ^Startable me start (readJsonStrKW body)))))
+
+        (and active? (some? latch) (empty? latch))
+        (let [rc (. ^Receivable impl receive evt)]
+          (when (and (isQuit? evt)
+                     (= rc Events/TEAR_DOWN))
+            (bcast! me
+                    Events/PLAY_SCRUBBED
+                    {:pnum (:number @context)})
+            (pause 1000)
+            (. ^Closeable me close))))))
+  Sendable
+  (send [me msg]
+    (cond
+      (isPrivate? msg) (some-> ^Sendable
+                               (:context msg) (.send msg))
+      (isPublic? msg) (.broadcast me msg)))
   Receivable
   (receive [me evt]
-    (when (= (:type (.state me))
-             (:type evt))
-      (log/debug "[%s]: recv'ed msg: %s" me evt)
-      (send! (:session (.state me)) evt)))
-  Stateful
-  (state [_] data))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defmacro defsubr "" [session]
-  (let [id (str "subr#" (seqint2))]
-    `(Subr. (atom {:type Events/PUBLIC
-                   :session ~session
-                   :id ~id}))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn createSubr "" [session]
-  (defsubr session))
+    (when (:active? @data)
+      (log/debug "room recv'ed msg %s" evt)
+      (cond
+        (isPublic? evt) (.broadcast me evt)
+        (isPrivate? evt) (.onEvent me evt)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -78,23 +147,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(deftype Room [data]
-  Identifiable
-  (id [_] (:id @data))
-  IDeref
-  (deref [_] @data)
-  Stateful
-  (state [_] data))
-
 (defmacro defarena "" [gameInfo finzer]
-  (let [rid (str "room#" (seqint2))]
-    `(Room. (atom {:numctr (AtomicInteger.)
-                   :shutting? false
-                   :opened? false
-                   :active? false
-                   :id ~rid}))))
+  (let [rid (str "arena#" (seqint2))]
+    `(entity<> Arena {:numctr (AtomicInteger.)
+                      :shutting? false
+                      :opened? false
+                      :conns {}
+                      :active? false
+                      :id ~rid})))
 
-(defn connect "" [room player arg]
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn connect "" [^Stateful room ^Stateful player arg]
   (let [{:keys [conns numctr]}
         @room
         n (. ^AtomicInteger
@@ -104,154 +168,23 @@
                    player
                    (merge arg
                           {:number n}))]
-    (swap! conns assoc (.id s) s)
-    (addTo @player s)
-    s))
+    (swap! (.state room)
+           update-in
+           [:conns] assoc (.id s) s)
+    (doto s addSession)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn arena<>
-  "" ^Arena [^Info gameObj finzer {:keys [source]}]
+(defn disconnect "" [^Stateful room ^Stateful session]
+  (let [{:keys [player]} @session
+        {:keys [dispatcher]} @room]
+    (swap! (.state room)
+           update-in
+           [:conns]
+           dissoc (.id ^Idable session))
+    (removeSession session)
+    (unsubscribeIfSession dispatcher session)))
 
-  (let [state (atom {:shutting? false
-                     :opened? false
-                     :enabled? false})
-        ctr (.server ^Pluglet source)
-        pcount (AtomicInteger.)
-        crt (.cljrt ctr)
-        sessions (atom {})
-        disp (dispatcher<>)
-        created (now<>)
-        rid (uid<>)
-        latch (atom nil)]
-
-    (reify Arena
-
-      (countPlayers [_] (count @sessions))
-
-      (disconnect [_ ps]
-        (let [py (.player ps)]
-          (swap! sessions dissoc (.id ps))
-          (.removeSession py ps)
-          (.unsubscribeIfSession disp ps)))
-
-      (isShuttingDown [_] (bool! (:shutting? @state)))
-
-      (canOpen [this]
-        (and (not (:opened? @state))
-             (>= (.countPlayers this)
-                 (.minPlayers gameObj))))
-
-      (game [_] gameObj)
-      (id [_] rid)
-
-      (close [_]
-        (log/debug "closing room(arena) [%s]" rid)
-        (doseq [^Session v (vals @sessions)]
-          (-> (.player v)
-              (.removeSession v))
-          (closeQ v))
-        (finzer rid))
-
-      (open [this]
-        (let [sss (sort-by #(.number ^Session %)
-                           (vals @sessions))
-              ^Game
-              g (.callEx crt
-                         (strKW (.implClass gameObj))
-                         (vargs* Object this sss))]
-          (log/debug "activating room %s" rid)
-          (swap! state assoc :opened? true :impl g)
-          (doseq [s sss]
-            (.addHandler this (localSubr<> s)))
-          (reset! latch @sessions)
-          (.init g nil)
-          (->> (fmtStartBody g sss)
-               (publicEvent<> Events/START)
-               (.broadcast this))))
-
-      (removeHandler [_ h] (.unsubscribe disp h))
-      (addHandler [_ h] (.subscribe disp h))
-
-      (broadcast [_ evt] (.publish disp evt))
-
-      (send [this msg]
-        (cond
-          (isPrivate? msg) (some-> ^Sendable
-                                   (:context msg) (.send msg))
-          (isPublic? msg) (.broadcast this msg)))
-
-      (isActive [_] (bool! (:enabled? @state)))
-
-      (restart [this arg]
-        (log/debug "arena#restart() called")
-        (->> (-> (:impl @state)
-                 (fmtStartBody (vals @sessions)))
-             (publicEvent<> Events/RESTART)
-             (.broadcast this)))
-      (restart [_] (.restart _ nil))
-
-      (start [_ arg]
-        (log/info "arena#start called")
-        (swap! state assoc :enabled? true)
-        (.start ^Game (:impl @state) arg))
-      (start [_] (.start _ nil))
-
-      (stop [_]
-        (swap! state assoc :enabled? false))
-
-      (receive [this evt]
-        (when (:opened? @state)
-          (log/debug "room got an event %s" evt)
-          (cond
-            (isPublic? evt)
-            (.broadcast this evt)
-
-            (isPrivate? evt)
-            (let [{:keys [context body]}
-                  evt
-                  ss (cast? Session context)]
-              (assert (some? ss))
-              (cond
-                (and (not (.isActive this))
-                     (isCode? Events/REPLAY evt))
-                (locking _latch_mutex_
-                  (when (empty? @latch)
-                    (reset! latch @sessions)
-                    (.restart this)))
-                (and (not (.isActive this))
-                     (isCode? Events/STARTED evt))
-                (if (in? @latch (.id ss))
-                  (locking _latch_mutex_
-                    (log/debug "latch: take-off: %s" (.id ss))
-                    (swap! latch dissoc (.id ss))
-                    (if (empty? @latch)
-                      (.start this (readJsonStrKW body)))))
-                (and (.isActive this)
-                     (some? @latch)
-                     (empty? @latch))
-                (let [rc (.onEvent ^Game
-                                   (:impl @state) evt)]
-                  (when (and (isQuit? evt)
-                             (= rc Events/TEAR_DOWN))
-                    (->> (publicEvent<> Events/PLAY_SCRUBBED
-                                        {:pnum (.number ss)})
-                         (.broadcast this))
-                    (pause 1000)
-                    (.close this))))))))
-
-      Object
-
-      (hashCode [this] (.hashCode rid))
-
-      (equals [this obj]
-        (if (nil? obj)
-          false
-          (or (identical? this obj)
-              (and (= (.getClass this)
-                      (.getClass obj))
-                   (= (.id ^Identifiable obj)
-                      (.id this)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

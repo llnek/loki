@@ -11,7 +11,7 @@
 package czlab.loki.sys;
 
 import czlab.jasal.Dispatchable;
-import czlab.jasal.Identifiable;
+import czlab.jasal.Idable;
 import czlab.jasal.Receivable;
 import czlab.jasal.Sendable;
 import java.io.Closeable;
@@ -19,31 +19,23 @@ import java.io.Closeable;
 /**
  * @author Kenneth Leung
  */
-public interface Room extends Identifiable
-                              , Sendable
-                              , Receivable
-                              , Dispatchable
-                              , Closeable {
+public interface Room {
 
   /**
    */
-  public Session connect(Player p, Object settings);
+  public Object connect(Object player, Object settings);
 
   /**
    */
-  public void broadcast(Object networkEvent);
+  public void broadcast(Object evt);
 
   /**
    */
-  public void disconnect(Session s);
+  public void disconnect(Object session);
 
   /**
    */
   public int countPlayers();
-
-  /**
-   */
-  public boolean isShuttingDown();
 
   /**
    */
@@ -55,7 +47,7 @@ public interface Room extends Identifiable
 
   /**
    */
-  public Object gist();
+  public Object onEvent(Object evt);
 
 }
 
