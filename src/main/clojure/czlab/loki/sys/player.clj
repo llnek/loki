@@ -15,7 +15,8 @@
 
   (:use [czlab.basal.core]
         [czlab.basal.io]
-        [czlab.basal.str])
+        [czlab.basal.str]
+        [czlab.loki.sys.session])
 
   (:import [czlab.jasal Idable]))
 
@@ -33,6 +34,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defentity Player
+  Object
+  (toString [me] (sname (id?? me)))
   Idable
   (id [_] (:id @data)))
 
@@ -60,19 +63,25 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn delete "" [userid]
+(defn removePlayer "" [userid]
 
   (locking userid-db
-    (if-some [pid (@userid-db userid)]
+    (when-some [pid (@userid-db userid)]
       (swap! userid-db dissoc userid)
-      (swap! player-id dissoc pid))))
+      (swap! player-db dissoc pid))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn lookup ""
+(defn lookupPlayer ""
 
   ([userid pwd] (createPlayer userid pwd))
   ([userid] (-> (@userid-db userid) (@player-db))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn logout "" [player]
+  (removeSessions player)
+  (removePlayer (:userid @player)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

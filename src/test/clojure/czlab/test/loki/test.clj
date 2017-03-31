@@ -27,13 +27,13 @@
         [czlab.basal.str]
         [clojure.test])
 
-  (:import [czlab.loki.game Game]
-           [io.netty.handler.codec.http.websocketx
+  (:import [io.netty.handler.codec.http.websocketx
             WebSocketFrame TextWebSocketFrame]
            [czlab.wabbit.sys Execvisor]
            [czlab.wabbit.ctl Pluglet]
+           [czlab.loki.game Game]
            [czlab.loki.sys Room]
-           [czlab.basal Cljrt]
+           [czlab.basal Stateful Cljrt]
            [czlab.loki.net Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -51,8 +51,10 @@
     (playerGist[_ _])
     (onEvent [_ _])
     (restart [_ _])
+    (restart [_])
     (init [_ _])
     (start [_ _])
+    (start [_])
     (stop [_])
     (startRound [_ _])
     (endRound [_])))
@@ -62,56 +64,52 @@
 (defn- mockExec "" []
   (let [rts (Cljrt/newrt)
         impl (muble<>)]
-    (with-meta
-      (reify
-        Execvisor
+    (reify
+      Execvisor
 
-        (homeDir [_] )
-        (pkeyBytes [this] (bytesit "hello world"))
-        (pkey [_] (.toCharArray "hello world"))
-        (cljrt [_] rts)
+      (homeDir [_] )
+      (pkeyBytes [this] (bytesit "hello world"))
+      (pkey [_] (.toCharArray "hello world"))
+      (cljrt [_] rts)
 
-        (getx [_] impl)
-        (version [_] "1.0")
-        (id [_] "1")
+      (getx [_] impl)
+      (version [_] "1.0")
+      (id [_] "1")
 
-        (uptimeInMillis [_] 0)
-        (locale [_] nil)
-        (startTime [_] 0)
-        (kill9 [_] )
-        (start [this _] )
-        (stop [this] )
-        (acquireDbPool [_ gid] nil)
-        (acquireDbAPI [_ gid] nil)
-        (dftDbPool [_] nil)
-        (dftDbAPI [_] nil)
-        (child [_ sid])
-        (hasChild [_ sid])
-        (core [_] nil)
-        (config [_] {})
-        (dispose [this]))
-      {:typeid ::Execvisor})))
+      (uptimeInMillis [_] 0)
+      (locale [_] nil)
+      (startTime [_] 0)
+      (kill9 [_] )
+      (start [this _] )
+      (stop [this] )
+      (acquireDbPool [_ gid] nil)
+      (acquireDbAPI [_ gid] nil)
+      (dftDbPool [_] nil)
+      (dftDbAPI [_] nil)
+      (child [_ sid])
+      (hasChild [_ sid])
+      (core [_] nil)
+      (config [_] {})
+      (dispose [this]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- mockPluglet "" ^Pluglet []
   (let [impl (muble<>)
         exe (mockExec)]
-    (with-meta
-      (reify Pluglet
-        (isEnabled [this] true)
-        (version [_] "1")
-        (config [_] {})
-        (spec [_] {})
-        (server [this] exe)
-        (getx [_] impl)
-        (hold [_ trig millis])
-        (id [_] "?")
-        (dispose [_])
-        (init [this cfg0])
-        (start [this arg])
-        (stop [_]))
-      {:typeid ::dummy})))
+    (reify Pluglet
+      (isEnabled [this] true)
+      (version [_] "1")
+      (config [_] {})
+      (spec [_] {})
+      (server [this] exe)
+      (getx [_] impl)
+      (hold [_ trig millis])
+      (id [_] "?")
+      (dispose [_])
+      (init [this cfg0])
+      (start [this arg])
+      (stop [_]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -126,7 +124,7 @@
     :height  480,
     :width  320
     :pubdate #inst "2016-01-01"
-    :author "llnek"
+    :author "joe"
     :network {
       :enabled? true
       :minp 2
@@ -192,14 +190,13 @@
              (nil? c4))))
 
   (is (let [c1 (lookupPlayer "u1" "p1")
-            _ (.updateGist c1 {:email "e"
-                               :name "n"})
-            e (:email (.gist c1))
-            n (:name (.gist c1))
-            nn (.nickname c1)
-            id (.id c1)
-            cs (.countSessions c1)
-            _ (.logout c1)
+            _ (.update ^Stateful c1 {:email "e" :name "n"})
+            e (:email @c1)
+            n (:name @c1)
+            nn (:userid @c1)
+            id (id?? c1)
+            cs (countSessions c1)
+            _ (logout c1)
             c4 (lookupPlayer "u1")]
         (and (some? c1)
              (= e "e")
@@ -220,17 +217,18 @@
                                  :settings {:b 2}
                                  :principal  "u2"
                                  :credential "p2"}})
-            r1 (some-> s .room)
-            r2 (some-> t .room)
+            gid (keyword gid)
+            r1 (some-> ^Stateful s .deref :room)
+            r2 (some-> ^Stateful t .deref :room)
             ok
             (and (some? r1)
                  (some? r2)
                  (identical? r1 r2)
-                 (= 1 (:a (.settings s)))
-                 (= 2 (:b (.settings t)))
+                 (= 1 (:a @s))
+                 (= 2 (:b @t))
                  (== 1 (countGameRooms gid))
                  (== 0 (countFreeRooms gid))
-                 (not (.canOpen r1)))
+                 (not (.canOpen ^Room r1)))
             _ (clearFreeRooms gid)
             _ (clearGameRooms gid)]
         (and ok
@@ -242,30 +240,47 @@
                           :body {:gameid gid
                                  :principal  "u3"
                                  :credential "p3"}})
-            ^Room r (some-> s .room)
+            gid (keyword gid)
+            ^Room r (some-> ^Stateful s .deref :room)
             ok
             (and (some? r)
                  (== 1 (countFreeRooms gid))
                  (not (.canOpen r)))
-            _ (removeFreeRoom gid (.id r))]
+            _ (removeFreeRoom gid (id?? r))]
         (and ok
              (== 0 (countFreeRooms gid)))))
 
-  (is (let [gid "game-1"
+  (is (let [;;_ (clearAllSessions)
+            gid "game-1"
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :principal  "u4"
                                  :credential "p4"}})
-            ^Room r (some-> s .room)
+            pu4_ok (lookupPlayer "u4")
+            pu4 (:player @s)
+            cnt (countSessions pu4)
+            ^Room r (some-> ^Stateful s .deref :room)
             na (not (.canOpen r))
             t (doJoinReq {:source (mockPluglet)
-                          :body {:roomid (some-> r .id)
+                          :body {:roomid (sname (some-> r id??))
                                  :gameid gid
                                  :principal  "u5"
                                  :credential "p5"}})
-            r2 (some-> t .room)]
+            gid (keyword gid)
+            ^Room r2 (some-> ^Stateful t .deref :room)
+            _ (logout pu4)
+            cnt2 (countSessions pu4)
+            pu4_nok (lookupPlayer "u4")]
+        (prn!! "puk_ok = %s" pu4_ok)
+(prn!! "puk_nok = %s" pu4_nok)
+(prn!! "cnt1 = %d, cnt2 = %d" cnt cnt2)
+
         (and (some? r)
              (some? r2)
+             (= 1 cnt)
+             (= 0 cnt2)
+             (some? pu4_ok)
+             (nil? pu4_nok)
              na
              (identical? r r2)
              (not (.canOpen r2))

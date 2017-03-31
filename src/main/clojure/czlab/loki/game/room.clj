@@ -20,13 +20,17 @@
         [czlab.basal.str]
         [czlab.loki.sys.util]
         [czlab.loki.net.core]
+        [czlab.loki.sys.session]
         [czlab.loki.game.arena])
 
-  (:import [czlab.wabbit.ctl Pluglet]
+  (:import [java.util.concurrent.atomic AtomicInteger]
+           [czlab.wabbit.ctl Pluglet]
            [io.netty.channel Channel]
+           [czlab.jasal Openable]
+           [czlab.basal Stateful]
            [czlab.loki.sys Room]
            [clojure.lang Keyword]
-           [czlab.loki.net Events]))
+           [czlab.loki.net PubSub Events]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -44,12 +48,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn countFreeRooms
-  "" ^long [gameid] (count (get @free-rooms (keyword gameid))))
+  "" ^long [gameid] (count (get @free-rooms gameid)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn countGameRooms
-  "" ^long [gameid] (count (get @game-rooms (keyword gameid))))
+  "" ^long [gameid] (count (get @game-rooms gameid)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -159,12 +163,46 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- newFreeRoom
-  "" [game options]
+  "" [game {:keys [source] :as options}]
 
   (let [p (partial removeGameRoom (id?? game))
-        room (defarena game p options)]
+        room (defarena game p source)]
     (log/debug "created a new room(F): %s" room)
     room))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn connect
+  "Connect a player to a romm"
+  [room player arg]
+
+  (locking room
+    (let [{:keys [conns numctr]}
+          @room
+          n (. ^AtomicInteger
+               numctr
+               incrementAndGet)
+          s (defsession room
+                        player
+                        (merge arg {:number n}))]
+      (swap! (.state ^Stateful room)
+             update-in
+             [:conns] assoc (id?? s) s)
+      (doto s addSession))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn disconnect "Disconnect a player from room"
+  [room session]
+
+  (let [{:keys [player]} @session
+        {:keys [disp]} @room]
+    (swap! (.state ^Stateful room)
+           update-in
+           [:conns]
+           dissoc (id?? session))
+    (removeSession session)
+    (. ^PubSub disp unsubscribeIfSession session)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -175,7 +213,7 @@
     (let [^Room room (or (lookupFreeRoom (id?? game))
                          (newFreeRoom game arg))
           s (get-in arg [:body :settings])
-          pss (some-> room (.connect plyr s))]
+          pss (some-> room (connect plyr s))]
       (when (some? pss)
         (let
           [^Channel ch (:socket arg)
@@ -196,7 +234,7 @@
               (log/debug "room has enough players, can open")
               (log/debug "room.canOpen = true")
               (addGameRoom room)
-              (.open room))
+              (.open ^Openable room _empty-map_))
             (addFreeRoom room))))
       pss)))
 
@@ -210,12 +248,12 @@
     (let [^Room room (or (lookupGameRoom gameid roomid)
                          (lookupFreeRoom gameid roomid))
           s (get-in arg [:body :settings])
-          game (some-> room .deref :game)
+          game (some-> ^Stateful room .deref :game)
           ch (:socket arg)]
       (when (and room
                  (< (.countPlayers room)
                     (:maxPlayers @game)))
-        (let [pss (.connect room plyr s)
+        (let [pss (connect room plyr s)
               src {:gameid (sname (id?? game))
                    :roomid (id?? room)
                    :puid (id?? plyr)
@@ -230,43 +268,9 @@
               (log/debug "room has enough players, can open")
               (log/debug "room.canOpen = true")
               (addGameRoom room)
-              (.open room))
+              (.open ^Openable room _empty-map_))
             (addFreeRoom room))
           pss)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn connect
-  "Connect a player to a romm"
-  [room player arg]
-
-  (locking room
-    (let [{:keys [conns numctr]}
-          @room
-          n (. ^AtomicInteger
-               numctr
-               incrementAndGet)
-          s (defsession room
-                        player
-                        (merge arg {:number n}))]
-      (swap! (.state room)
-             update-in
-             [:conns] assoc (id?? s) s)
-      (doto s addSession))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn disconnect "Disconnect a player from room"
-  [room session]
-
-  (let [{:keys [player]} @session
-        {:keys [disp]} @room]
-    (swap! (.state room)
-           update-in
-           [:conns]
-           dissoc (id?? session))
-    (removeSession session)
-    (. ^PubSub disp unsubscribeIfSession session)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

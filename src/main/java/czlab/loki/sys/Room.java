@@ -17,15 +17,7 @@ public interface Room {
 
   /**
    */
-  public Object connect(Object player, Object settings);
-
-  /**
-   */
   public void broadcast(Object evt);
-
-  /**
-   */
-  public void disconnect(Object session);
 
   /**
    */

@@ -13,8 +13,7 @@
 
   (:require [czlab.basal.logging :as log])
 
-  (:use [czlab.convoy.nettio.core]
-        [czlab.basal.core]
+  (:use [czlab.basal.core]
         [czlab.basal.str])
 
   (:import [clojure.lang APersistentVector]
@@ -24,7 +23,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defonce ^AttributeKey PSSN (akey<> "play-session"))
+(defonce ^AttributeKey PSSN (AttributeKey/newInstance "player-session"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

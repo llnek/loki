@@ -17,7 +17,8 @@
   (:use [czlab.basal.core]
         [czlab.basal.str])
 
-  (:import [java.io File]))
+  (:import [czlab.jasal Idable]
+           [java.io File]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -34,7 +35,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defmacro defgame-info "" [seed] `(entity<> GameInfo seed))
+(defmacro defgame-info "" [seed] `(entity<> GameInfo ~seed))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

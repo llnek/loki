@@ -22,7 +22,16 @@
         [czlab.basal.str]
         [czlab.loki.sys.session])
 
-  (:import [czlab.jasal Idable Openable Receivable Sendable Dispatchable]
+  (:import [java.util.concurrent.atomic AtomicInteger]
+           [czlab.jasal
+            Restartable
+            Startable
+            Initable
+            Idable
+            Openable
+            Receivable
+            Sendable
+            Dispatchable]
            [java.io Closeable]
            [czlab.loki.game Game]
            [czlab.loki.sys Room]
@@ -49,11 +58,14 @@
 (defentity Arena
   Openable
   (open [me _]
-    (let [{:keys [disp conns game]}
+    (let [{:keys [disp source conns game]}
           @data
+          rt (.. ^Pluglet
+                  source
+                  server cljrt)
           sss (sort-by #(:created (deref %))
                        (vals conns))
-          g (.callEx crt
+          g (.callEx rt
                      (strKW (:implClass @game))
                      (vargs* Object me sss))]
           (log/debug "activating room %s" me)
@@ -64,20 +76,18 @@
                  :impl g :latch conns
                  :starting? false
                  :opened? true :active? false)
-          (. ^Initable g init _empty-map)
+          (. ^Initable g init _empty-map_)
           (bcast! me Events/START (fmtStartBody g sss))))
   (close [me]
     (log/debug "closing arena [%s]" me)
     (doseq [[_ s] (:conns @data)]
       (doto s removeSession closeQ))
-    (swap! data assoc :conns _empty-map)
+    (swap! data assoc :conns _empty-map_)
     ((:finz @data) (id?? me)))
   Idable
   (id [_] (:id @data))
   Object
-  (hashCode [me] (.hashCode (id?? me)))
-  (equals [this obj] (objEQ? this obj))
-  (toString [me] (id?? me))
+  (toString [me] (sname (id?? me)))
   Restartable
   (restart [me _]
     (log/debug "arena#restart() called")
@@ -96,11 +106,11 @@
   Room
   (countPlayers [_] (count (:conns @data)))
   (broadcast [_ evt]
-    (. ^Dispatcher (:disp @data) publish evt))
+    (. ^PubSub (:disp @data) publish evt))
   (canOpen [me]
-    (and (not (:active? @data))
+    (and (not (:opened? @data))
          (>= (.countPlayers me)
-             (:minPlayers (:game @data)))))
+             (:minPlayers @(:game @data)))))
   (onEvent [me evt]
     (let [{:keys [context body]} evt
           {:keys [impl latch conns active?]} @data]
@@ -122,7 +132,7 @@
               (. ^Startable me start (readJsonStrKW body)))))
 
         (and active? (some? latch) (empty? latch))
-        (let [rc (. ^Receivable impl receive evt)]
+        (let [rc (. ^Game impl onEvent evt)]
           (when (and (isQuit? evt)
                      (= rc Events/TEAR_DOWN))
             (bcast! me
@@ -146,17 +156,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defmacro defarena "" [game finzer]
+(defmacro defarena "" [game finzer source]
   (let [rid (keyword (uid<>))]
-    `(entity<> Arena {:shutting? false
+    `(entity<> Arena {:numctr (AtomicInteger.)
+                      :disp (defdispatcher)
+                      :shutting? false
                       :opened? false
                       :active? false
-                      :disp nil
-                      :finz finzer
-                      :game game
+                      :source ~source
+                      :finz ~finzer
+                      :game ~game
                       :conns {}
                       :id ~rid})))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

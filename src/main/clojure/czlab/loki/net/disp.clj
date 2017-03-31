@@ -27,8 +27,9 @@
         [czlab.basal.io]
         [czlab.basal.str])
 
-  (:import [czlab.jasal Sendable Receivable]
+  (:import [czlab.jasal Idable Sendable Receivable]
            [czlab.loki.net PubSub]
+           [java.io Closeable]
            [io.netty.channel Channel]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38,9 +39,7 @@
 ;;
 (defentity Subr
   Object
-  (hashCode [me] (.hashCode (id?? me)))
-  (equals [me obj] (objEQ? me obj))
-  (toString [me] (id?? me))
+  (toString [me] (sname (id?? me)))
   Idable
   (id [_] (:id @data))
   Receivable
@@ -61,6 +60,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defentity Dispatcher
+  Object
+  (toString [me] (sname (id?? me)))
+  Idable
+  (id [_] (:id @data))
   PubSub
   (unsubscribeIfSession [me s]
     (doseq [[cb _] (:handlers @data)
@@ -77,13 +80,14 @@
       (swap! data
              update-in [:handlers] dissoc s)))
   (subscribe [_ s]
-    (let [c (cas/chan 4)]
+    (let [c (cas/chan 4)
+          ^Receivable r s]
       (swap! data update-in [:handlers] assoc s c)
       (cas/go-loop []
         (when-some [msg (cas/<! c)]
           (if (= (:type @s)
                  (:type msg))
-            (. ^Receivable s receive msg))
+            (.receive r msg))
           (recur)))))
   Closeable
   (close [_]
@@ -94,7 +98,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defmacro defdispatcher "" []
-  `(entity<> Dispatcher {:handlers {}}))
+  (let [id (toKW "disp#" (seqint2))]
+    `(entity<> Dispatcher {:id ~id :handlers {}})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

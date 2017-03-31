@@ -32,9 +32,7 @@
 ;;
 (defentity Session
   Object
-  (hashCode [me] (.hashCode (id?? me)))
-  (toString [me] (id?? me))
-  (equals [me obj] (objEQ? me obj))
+  (toString [me] (sname (id?? me)))
   Openable
   (open [_ options]
     (do->nil
@@ -61,6 +59,7 @@
 ;;
 (defn defsession "" [room player settings]
   (let [sid (toKW "sess#" (seqint2))
+        pid (id?? player)
         s (entity<> Session
                     (merge settings
                            {:shutting? false
@@ -72,29 +71,65 @@
                             :room room
                             :player player}))]
     (doto->> s
-             (swap! sessions-db assoc (id?? s) ))))
+             (swap! sessions-db
+                    update-in
+                    [pid]
+                    assoc (id?? s) ))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn clearAllSessions "" []
+  (locking sessions-db
+    (reset! sessions-db {})))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn countSessions "" [player]
+  #_
+  (doall
+    (map #(prn!! "SESSSSS = %s" (dissoc % :room))
+         (keys (@sessions-db (id?? player)))))
+  (if player
+    (count (@sessions-db (id?? player))) 0))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn removeSession
+  "Remove session from player" [session]
+  (if-some [p (some-> session deref :player)]
+    (swap! sessions-db
+           update-in
+           [(id?? p)]
+           dissoc
+           (id?? session))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn addSession
-  "Add a session to this player" [player session]
-  {:pre [(some? player)(some? session)]}
-  (swap! @sessions-db
-         update-in
-         [(id?? player)]
-         assoc
-         (id?? session) session))
+  "Add a session to this player" [session]
+  {:pre [(some? session)]}
+  (let [pid (id?? (:player @session))
+        sid (id?? session)]
+    (if (in? @sessions-db pid)
+      (swap! sessions-db
+             update-in
+             [pid]
+             assoc sid session)
+      (swap! sessions-db
+             assoc
+             pid
+             {sid session}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn closeAll
-  "Close all sessions for this player"
+(defn removeSessions
+  "Remove all sessions from player"
   [player]
   {:pre [(some? player)]}
 
   (let [pid (id?? player)]
     (when-some+ [m (@sessions-db pid)]
-      (swap! @sessions-db dissoc pid)
+      (swap! sessions-db dissoc pid)
       (doseq [[_ c] m] (closeQ c)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -25,6 +25,7 @@
 
   (:import [czlab.wabbit.ctl Pluglet]
            [czlab.jasal I18N]
+           [czlab.basal Stateful]
            [io.netty.channel Channel]
            [czlab.loki.net Events]))
 
@@ -50,7 +51,7 @@
                            (charsit credential)))
          s (if (and (some? g)
                     (some? p)) (openRoom g p evt))
-         r (some-> s .room)]
+         r (some-> ^Stateful s .deref :room)]
         (log/debug "game[%s] loaded as: %s" gameid g)
         (cond
           (nil? g)
@@ -68,7 +69,7 @@
             (replyError socket
                         Events/ROOMS_FULL
                         (rstr rcb "room.none")))
-          :else ps))
+          :else s))
       (do->nil
         (replyError socket
                     Events/PLAYREQ_NOK
