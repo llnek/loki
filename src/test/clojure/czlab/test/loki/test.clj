@@ -180,16 +180,18 @@
 
   (is (some? (lookupGame "game-1")))
 
-  (is (let [c1 (lookupPlayer "u1" "p1")
+  (is (let [c1 (lookupPlayer "u1" "p1") ;; user#1
             c2 (lookupPlayer "u1")
             c3 (removePlayer "u1")
             c4 (lookupPlayer "u1")]
+        (prn!! "POOO === %s" @c1)
         (and (some? c1)
              (identical? c1 c2)
              (some? c3)
              (nil? c4))))
 
-  (is (let [c1 (lookupPlayer "u1" "p1")
+  (is (let [c1 (lookupPlayer "u1" "p1") ;; user#2
+            _ (prn!! "ZOOO === %s" @c1)
             _ (.update ^Stateful c1 {:email "e" :name "n"})
             e (:email @c1)
             n (:name @c1)
@@ -211,11 +213,11 @@
                           :body {:gameid gid
                                  :settings {:a 1}
                                  :principal  "u1"
-                                 :credential "p1"}})
+                                 :credential "p1"}}) ;user#3
             t (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :settings {:b 2}
-                                 :principal  "u2"
+                                 :principal  "u2" ;user#4
                                  :credential "p2"}})
             gid (keyword gid)
             r1 (some-> ^Stateful s .deref :room)
@@ -239,7 +241,7 @@
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :principal  "u3"
-                                 :credential "p3"}})
+                                 :credential "p3"}}) ;user#5
             gid (keyword gid)
             ^Room r (some-> ^Stateful s .deref :room)
             ok
@@ -252,10 +254,14 @@
 
   (is (let [;;_ (clearAllSessions)
             gid "game-1"
+            xxx (lookupPlayer "u4" "p4") ;user#6
+            yyy (countSessions xxx)
+            _ (prn!! "yyyyy = %d" yyy)
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :principal  "u4"
                                  :credential "p4"}})
+            _ (prn!! "session===== %s" (dissoc @s :room))
             pu4_ok (lookupPlayer "u4")
             pu4 (:player @s)
             cnt (countSessions pu4)

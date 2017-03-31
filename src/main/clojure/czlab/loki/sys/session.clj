@@ -85,10 +85,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn countSessions "" [player]
-  #_
   (doall
-    (map #(prn!! "SESSSSS = %s" (dissoc % :room))
-         (keys (@sessions-db (id?? player)))))
+    (map #(prn!! "SESSSSS = %s" (dissoc (deref %) :room))
+         (vals (@sessions-db (id?? player)))))
   (if player
     (count (@sessions-db (id?? player))) 0))
 
@@ -96,29 +95,26 @@
 ;;
 (defn removeSession
   "Remove session from player" [session]
-  (if-some [p (some-> session deref :player)]
+  {:pre [(some? session)]}
+  (let [p (:player @session)]
     (swap! sessions-db
            update-in
            [(id?? p)]
            dissoc
-           (id?? session))))
+           (id?? session))
+    nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn addSession
   "Add a session to this player" [session]
   {:pre [(some? session)]}
-  (let [pid (id?? (:player @session))
-        sid (id?? session)]
-    (if (in? @sessions-db pid)
-      (swap! sessions-db
-             update-in
-             [pid]
-             assoc sid session)
-      (swap! sessions-db
-             assoc
-             pid
-             {sid session}))))
+  (let [p (:player @session)]
+    (swap! sessions-db
+           update-in
+           [(id?? p)]
+           assoc (id?? session) session)
+    s))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -130,7 +126,8 @@
   (let [pid (id?? player)]
     (when-some+ [m (@sessions-db pid)]
       (swap! sessions-db dissoc pid)
-      (doseq [[_ c] m] (closeQ c)))))
+      (doseq [[_ c] m] (closeQ c)))
+    nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
