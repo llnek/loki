@@ -31,28 +31,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defentity Session
-  Object
-  (toString [me] (sname (id?? me)))
   Openable
   (open [_ options]
     (do->nil
       (swap! data
-             assoc
-             :status true
-             :src (:source options)
-             :tcp  (:socket options))))
+             merge
+             {:status true}
+             (select-keys options
+                          [:source :socket]))))
   (close [_]
-    (closeQ (:tcp @data))
-    (swap! data assoc :status false :tcp nil))
-  Idable
-  (id [_] (:id @data))
+    (closeQ (:socket @data))
+    (swap! data
+           assoc :status false :socket nil))
   Sendable
   (send [_ msg]
-    (let [{:keys [tcp shutting? status]} @data]
+    (let [{:keys [socket shutting? status]} @data]
       (if (and status
                (not shutting?))
         (some-> ^Channel
-                tcp
+                socket
                 (.writeAndFlush (encodeEvent msg)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -65,8 +62,8 @@
                            {:shutting? false
                             :created (now<>)
                             :status false
-                            :src nil
-                            :tcp nil
+                            :source nil
+                            :socket nil
                             :id sid
                             :room room
                             :player player}))]
@@ -78,9 +75,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn clearAllSessions "" []
-  (locking sessions-db
-    (reset! sessions-db {})))
+(defn clearAllSessions "" [] (reset! sessions-db {}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -91,40 +86,41 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn removeSession
-  "Remove session from player" [session]
+  ""
+  [session]
   {:pre [(some? session)]}
-  (let [p (:player @session)]
+  (if-some [p (:player @session)]
     (swap! sessions-db
            update-in
            [(id?? p)]
            dissoc
-           (id?? session))
-    nil))
+           (id?? session)))
+  nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn addSession
-  "Add a session to this player" [session]
+  ""
+  [session]
   {:pre [(some? session)]}
-  (let [p (:player @session)]
+  (if-some [p (:player @session)]
     (swap! sessions-db
            update-in
            [(id?? p)]
-           assoc (id?? session) session)
-    s))
+           assoc (id?? session) session))
+  session)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn removeSessions
-  "Remove all sessions from player"
+  ""
   [player]
   {:pre [(some? player)]}
-
-  (let [pid (id?? player)]
-    (when-some+ [m (@sessions-db pid)]
+  (if-some [pid (id?? player)]
+    (let [m (@sessions-db pid)]
       (swap! sessions-db dissoc pid)
-      (doseq [[_ c] m] (closeQ c)))
-    nil))
+      (doseq [[_ c] m] (closeQ c))))
+  nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

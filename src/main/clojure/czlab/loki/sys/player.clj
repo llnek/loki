@@ -33,25 +33,22 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defentity Player
-  Object
-  (toString [me] (sname (id?? me)))
-  Idable
-  (id [_] (:id @data)))
+(defentity Player)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defmacro defplayer "" [userid passwd]
-  `(entity<> Player {:id (toKW "user#" (seqint2))
-                     :userid ~userid
-                     :passwd ~passwd}))
+  `(entity<> Player
+             {:userid ~userid
+              :passwd ~passwd
+              :id (toKW "player#" (seqint2)) }))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- createPlayer ""
+(defn- createPlayer
+  ""
   [^String userid ^chars passwd]
   {:pre [(hgl? userid)]}
-
   (locking userid-db
     (if (notin? @userid-db userid)
       (let [p (defplayer userid passwd)
@@ -63,7 +60,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn removePlayer "" [userid]
-
   (locking userid-db
     (when-some [pid (@userid-db userid)]
       (swap! userid-db dissoc userid)
@@ -72,7 +68,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn lookupPlayer ""
-
   ([userid pwd] (createPlayer userid pwd))
   ([userid] (-> (@userid-db userid) (@player-db))))
 

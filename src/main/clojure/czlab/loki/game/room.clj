@@ -75,36 +75,36 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+(defn- removeXXXRoom
+  ""
+  [gameid roomid db dbtxt]
+  (locking _room-mutex_
+    (when-some [r (-> (@db gameid)
+                      (get roomid))]
+      (log/debug "remove %s: %s, game: %s" dbtxt roomid gameid)
+      (swap! db update-in [gameid] dissoc roomid)
+      r)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 (defn removeGameRoom
   "Remove an active room"
   [gameid roomid]
-
-  (locking _room-mutex_
-    (when-some [r (-> (@game-rooms gameid)
-                      (get roomid))]
-      (log/debug "remove room(A): %s, game: %s" roomid gameid)
-      (swap! game-rooms update-in [gameid] dissoc roomid)
-      r)))
+  (removeXXXRoom gameid roomid game-rooms "room(A)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn removeFreeRoom
   "Remove a waiting room"
   [gameid roomid]
-
-  (locking _room-mutex_
-    (when-some [r (-> (@free-rooms gameid)
-                      (get roomid))]
-      (log/debug "remove room(F): %s, game: %s" roomid gameid)
-      (swap! free-rooms update-in [gameid] dissoc roomid)
-      r)))
+  (removeXXXRoom gameid roomid free-rooms "room(F)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- addXXXRoom ""
+(defn- addXXXRoom
+  ""
   [room db dbt]
   {:pre [(some? room)]}
-
   (locking _room-mutex_
     (let [gid (id?? (:game @room))
           rid (id?? room)
@@ -175,7 +175,6 @@
 (defn connect
   "Connect a player to a romm"
   [room player arg]
-
   (locking room
     (let [{:keys [conns numctr]}
           @room
@@ -192,9 +191,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn disconnect "Disconnect a player from room"
+(defn disconnect
+  "Disconnect a player from room"
   [room session]
-
   (let [{:keys [player]} @session
         {:keys [disp]} @room]
     (swap! (.state ^Stateful room)

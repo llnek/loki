@@ -84,10 +84,6 @@
       (doto s removeSession closeQ))
     (swap! data assoc :conns _empty-map_)
     ((:finz @data) (id?? me)))
-  Idable
-  (id [_] (:id @data))
-  Object
-  (toString [me] (sname (id?? me)))
   Restartable
   (restart [me _]
     (log/debug "arena#restart() called")

@@ -38,10 +38,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defentity Subr
-  Object
-  (toString [me] (sname (id?? me)))
-  Idable
-  (id [_] (:id @data))
   Receivable
   (receive [me evt]
     (when (= (:type @data)
@@ -59,10 +55,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defentity Dispatcher
-  Object
-  (toString [me] (sname (id?? me)))
-  Idable
-  (id [_] (:id @data))
   PubSub
   (unsubscribeIfSession [me s]
     (doseq [[cb _] (:handlers @data)
@@ -79,8 +71,8 @@
       (swap! data
              update-in [:handlers] dissoc s)))
   (subscribe [_ s]
-    (let [c (cas/chan 4)
-          ^Receivable r s]
+    (let [^Receivable r s
+          c (cas/chan 4)]
       (swap! data update-in [:handlers] assoc s c)
       (cas/go-loop []
         (when-some [msg (cas/<! c)]
