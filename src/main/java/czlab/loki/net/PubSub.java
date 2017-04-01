@@ -15,19 +15,19 @@ package czlab.loki.net;
  */
 public interface PubSub {
 
-  /**
+  /** Remove handler that owns this session.
    */
   public void unsubscribeIfSession(Object session);
 
-  /**
+  /** Remove handler.
    */
   public void unsubscribe(Object handler);
 
-  /**
+  /** Add handler.
    */
   public void subscribe(Object handler);
 
-  /**
+  /** Send message to all handlers.
    */
   public void publish(Object event);
 

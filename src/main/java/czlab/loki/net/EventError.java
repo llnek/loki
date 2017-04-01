@@ -19,14 +19,14 @@ public class EventError extends Exception {
 
   /**
    */
-  public EventError(String msg) {
-    super(msg);
+  public EventError(String msg, Exception e) {
+    super(msg,e);
   }
 
   /**
    */
-  public EventError(String msg, Exception e) {
-    super(msg,e);
+  public EventError(String msg) {
+    super(msg);
   }
 
 }

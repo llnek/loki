@@ -184,14 +184,12 @@
             c2 (lookupPlayer "u1")
             c3 (removePlayer "u1")
             c4 (lookupPlayer "u1")]
-        (prn!! "POOO === %s" @c1)
         (and (some? c1)
              (identical? c1 c2)
              (some? c3)
              (nil? c4))))
 
   (is (let [c1 (lookupPlayer "u1" "p1") ;; user#2
-            _ (prn!! "ZOOO === %s" @c1)
             _ (.update ^Stateful c1 {:email "e" :name "n"})
             e (:email @c1)
             n (:name @c1)
@@ -252,16 +250,11 @@
         (and ok
              (== 0 (countFreeRooms gid)))))
 
-  (is (let [;;_ (clearAllSessions)
-            gid "game-1"
-            xxx (lookupPlayer "u4" "p4") ;user#6
-            yyy (countSessions xxx)
-            _ (prn!! "yyyyy = %d" yyy)
+  (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
                           :body {:gameid gid
                                  :principal  "u4"
                                  :credential "p4"}})
-            _ (prn!! "session===== %s" (dissoc @s :room))
             pu4_ok (lookupPlayer "u4")
             pu4 (:player @s)
             cnt (countSessions pu4)
@@ -277,10 +270,6 @@
             _ (logout pu4)
             cnt2 (countSessions pu4)
             pu4_nok (lookupPlayer "u4")]
-        (prn!! "puk_ok = %s" pu4_ok)
-(prn!! "puk_nok = %s" pu4_nok)
-(prn!! "cnt1 = %d, cnt2 = %d" cnt cnt2)
-
         (and (some? r)
              (some? r2)
              (= 1 cnt)

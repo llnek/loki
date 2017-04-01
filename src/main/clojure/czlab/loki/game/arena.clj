@@ -157,17 +157,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defmacro defarena "" [game finzer source]
-  (let [rid (keyword (uid<>))]
-    `(entity<> Arena {:numctr (AtomicInteger.)
-                      :disp (defdispatcher)
-                      :shutting? false
-                      :opened? false
-                      :active? false
-                      :source ~source
-                      :finz ~finzer
-                      :game ~game
-                      :conns {}
-                      :id ~rid})))
+  `(entity<> Arena {:numctr (AtomicInteger.)
+                    :disp (defdispatcher)
+                    :id (keyword (uid<>))
+                    :shutting? false
+                    :opened? false
+                    :active? false
+                    :source ~source
+                    :finz ~finzer
+                    :game ~game
+                    :conns {} }))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

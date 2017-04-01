@@ -85,9 +85,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn countSessions "" [player]
-  (doall
-    (map #(prn!! "SESSSSS = %s" (dissoc (deref %) :room))
-         (vals (@sessions-db (id?? player)))))
   (if player
     (count (@sessions-db (id?? player))) 0))
 

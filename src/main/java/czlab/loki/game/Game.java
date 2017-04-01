@@ -19,19 +19,19 @@ import czlab.jasal.Initable;
  */
 public interface Game extends Initable, Startable, Restartable {
 
-  /**
+  /** Start a new round.
    */
   public void startRound(Object arg);
 
-  /**
-   */
-  public Object playerGist(Object id);
-
-  /**
+  /** End of a round.
    */
   public void endRound();
 
-  /**
+  /** Get info on a player.
+   */
+  public Object playerGist(Object id);
+
+  /** Received a message from a player.
    */
   public Object onEvent(Object evt);
 

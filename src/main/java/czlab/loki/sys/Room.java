@@ -15,19 +15,20 @@ package czlab.loki.sys;
  */
 public interface Room {
 
-  /**
+  /** Send message to all connected players.
    */
   public void broadcast(Object evt);
 
-  /**
+  /** How many players are in the room.
    */
   public int countPlayers();
 
-  /**
+  /** Room is ready to open - we have
+   *  enough players.
    */
   public boolean canOpen();
 
-  /**
+  /** Received a message from a player.
    */
   public Object onEvent(Object evt);
 

@@ -42,10 +42,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defmacro defplayer "" [userid passwd]
-  (let [pid (toKW "user#" (seqint2))]
-    `(entity<> Player {:userid ~userid
-                       :id ~pid
-                       :passwd ~passwd})))
+  `(entity<> Player {:id (toKW "user#" (seqint2))
+                     :userid ~userid
+                     :passwd ~passwd}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

@@ -52,10 +52,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defmacro defsubr "" [session]
-  (let [id (toKW "subr#" (seqint2))]
-    `(entity<> Subr {:type Events/PUBLIC
-                     :id ~id
-                     :session ~session})))
+  `(entity<> Subr {:id (toKW "subr#" (seqint2))
+                   :type Events/PUBLIC
+                   :session ~session}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -98,8 +97,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defmacro defdispatcher "" []
-  (let [id (toKW "disp#" (seqint2))]
-    `(entity<> Dispatcher {:id ~id :handlers {}})))
+  `(entity<> Dispatcher
+             {:id (toKW "disp#" (seqint2))
+              :handlers {}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
