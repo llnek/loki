@@ -218,17 +218,17 @@
                                  :principal  "u2" ;user#4
                                  :credential "p2"}})
             gid (keyword gid)
-            r1 (some-> ^Stateful s .deref :room)
-            r2 (some-> ^Stateful t .deref :room)
+            r1 (some-> ^Stateful s .deref :roomid)
+            r2 (some-> ^Stateful t .deref :roomid)
             ok
             (and (some? r1)
                  (some? r2)
-                 (identical? r1 r2)
+                 (= r1 r2)
                  (= 1 (:a @s))
                  (= 2 (:b @t))
                  (== 1 (countGameRooms gid))
                  (== 0 (countFreeRooms gid))
-                 (not (.canOpen ^Room r1)))
+                 (not (.canOpen (lookupGameRoom gid r1))))
             _ (clearFreeRooms gid)
             _ (clearGameRooms gid)]
         (and ok
@@ -241,7 +241,8 @@
                                  :principal  "u3"
                                  :credential "p3"}}) ;user#5
             gid (keyword gid)
-            ^Room r (some-> ^Stateful s .deref :room)
+            r (lookupFreeRoom gid
+                              (some-> ^Stateful s .deref :roomid))
             ok
             (and (some? r)
                  (== 1 (countFreeRooms gid))
@@ -258,7 +259,8 @@
             pu4_ok (lookupPlayer "u4")
             pu4 (:player @s)
             cnt (countSessions pu4)
-            ^Room r (some-> ^Stateful s .deref :room)
+            r (lookupFreeRoom (keyword gid)
+                              (some-> ^Stateful s .deref :roomid))
             na (not (.canOpen r))
             t (doJoinReq {:source (mockPluglet)
                           :body {:roomid (sname (some-> r id??))
@@ -266,7 +268,8 @@
                                  :principal  "u5"
                                  :credential "p5"}})
             gid (keyword gid)
-            ^Room r2 (some-> ^Stateful t .deref :room)
+            r2 (lookupGameRoom gid
+                               (some-> ^Stateful t .deref :roomid))
             _ (logout pu4)
             cnt2 (countSessions pu4)
             pu4_nok (lookupPlayer "u4")]

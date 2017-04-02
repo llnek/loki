@@ -59,13 +59,13 @@
         pid (id?? player)
         s (entity<> Session
                     (merge settings
-                           {:shutting? false
+                           {:roomid (id?? room)
+                            :shutting? false
                             :created (now<>)
                             :status false
                             :source nil
                             :socket nil
                             :id sid
-                            :room room
                             :player player}))]
     (doto->> s
              (swap! sessions-db

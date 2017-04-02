@@ -50,8 +50,7 @@
              (lookupPlayer principal
                            (charsit credential)))
          s (if (and (some? g)
-                    (some? p)) (openRoom g p evt))
-         r (some-> ^Stateful s .deref :room)]
+                    (some? p)) (openRoom g p evt))]
         (log/debug "game[%s] loaded as: %s" gameid g)
         (cond
           (nil? g)
@@ -64,7 +63,7 @@
             (replyError socket
                         Events/USER_NOK
                         (rstr rcb "login.error")))
-          (nil? r)
+          (nil? s)
           (do->nil
             (replyError socket
                         Events/ROOMS_FULL

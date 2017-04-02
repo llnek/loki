@@ -54,9 +54,9 @@
       (doJoinReq req)
 
       :else
-      (if-some [ss (getAKey ch PSSN)]
-        (->> (assoc req :context ss)
-             (. ^Receivable (:room @ss) receive ))
+      (if-some [a (getAKey ch RMSN)]
+        (->> (assoc req :context (:session a))
+             (. ^Receivable (:room a) receive))
         (log/error "no session attached to socket")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

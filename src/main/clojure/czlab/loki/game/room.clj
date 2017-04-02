@@ -138,7 +138,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn lookupFreeRoom
+(defn- getFreeRoom
   "Returns a free room which is detached from the pending set"
 
   ([gameid roomid]
@@ -155,8 +155,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- lookupGameRoom
-  "" [gameid roomid]
+(defn lookupFreeRoom
+  "" ^Room [gameid roomid]
+  (log/debug "looking for room(F): %s, game: %s" roomid gameid)
+  (get (@free-rooms gameid) roomid))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(defn lookupGameRoom
+  "" ^Room [gameid roomid]
   (log/debug "looking for room(A): %s, game: %s" roomid gameid)
   (get (@game-rooms gameid) roomid))
 
@@ -209,7 +216,7 @@
   "" [game plyr arg]
 
   (locking _room-mutex_
-    (let [^Room room (or (lookupFreeRoom (id?? game))
+    (let [^Room room (or (getFreeRoom (id?? game))
                          (newFreeRoom game arg))
           s (get-in arg [:body :settings])
           pss (some-> room (connect plyr s))]
@@ -222,7 +229,7 @@
                 :pnum (:number @pss)}
            evt (privateEvent<> Events/PLAYREQ_OK src)]
           (. ^Openable pss open arg)
-          (setAKey ch PSSN pss)
+          (setAKey ch RMSN {:room room :session pss})
           (log/debug "replying msg to user: %s" evt)
           (replyEvent ch evt)
           (bcast! room
@@ -245,7 +252,7 @@
 
   (locking _room-mutex_
     (let [^Room room (or (lookupGameRoom gameid roomid)
-                         (lookupFreeRoom gameid roomid))
+                         (getFreeRoom gameid roomid))
           s (get-in arg [:body :settings])
           game (some-> ^Stateful room .deref :game)
           ch (:socket arg)]
@@ -259,7 +266,7 @@
                    :pnum (:number @pss)}
               evt (privateEvent<> Events/JOINREQ_OK src)]
           (. ^Openable pss open arg)
-          (setAKey ch PSSN pss)
+          (setAKey ch RMSN {:room room :session pss})
           (replyEvent ch evt)
           (log/debug "replying back to user: %s" evt)
           (if (.canOpen room)

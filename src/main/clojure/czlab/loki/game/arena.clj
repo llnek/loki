@@ -68,7 +68,7 @@
           g (.callEx rt
                      (strKW (:implClass @game))
                      (vargs* Object me sss))]
-          (log/debug "activating room %s" me)
+          (log/debug "activating room [%s]" me)
           (doseq [s sss]
             (. ^PubSub disp subscribe (defsubr s)))
           (swap! data
@@ -144,7 +144,7 @@
       (isPublic? msg) (.broadcast me msg)))
   Receivable
   (receive [me evt]
-    (when (:active? @data)
+    (when (:opened? @data)
       (log/debug "room recv'ed msg %s" evt)
       (cond
         (isPublic? evt) (.broadcast me evt)
