@@ -29,8 +29,6 @@
 
   (:import [io.netty.handler.codec.http.websocketx
             WebSocketFrame TextWebSocketFrame]
-           [czlab.wabbit.sys Execvisor]
-           [czlab.wabbit.ctl Pluglet]
            [czlab.loki.game Game]
            [czlab.loki.sys Room]
            [czlab.basal Stateful Cljrt]

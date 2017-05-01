@@ -20,8 +20,7 @@
         [czlab.loki.net.core])
 
   (:import [czlab.jasal Openable Sendable Idable]
-           [io.netty.channel Channel]
-           [czlab.loki.net Events]))
+           [io.netty.channel Channel]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -30,22 +29,22 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defentity Session
+(decl-mutable GameSession
   Openable
-  (open [_ options]
-    (do->nil
-      (swap! data
-             merge
-             {:status true}
-             (select-keys options
-                          [:source :socket]))))
-  (close [_]
-    (closeQ (:socket @data))
-    (swap! data
-           assoc :status false :socket nil))
+  (open [me options]
+    (copy* me
+           (merge {:status true}
+                  (select-keys options
+                               [:source :socket]))))
+  (close [me]
+    (closeQ (:socket @me))
+    (copy* me
+           {:status false :socket nil}))
+  Idable
+  (id [me] (:id @me))
   Sendable
-  (send [_ msg]
-    (let [{:keys [socket shutting? status]} @data]
+  (send [me msg]
+    (let [{:keys [socket shutting? status]} @me]
       (if (and status
                (not shutting?))
         (some-> ^Channel
@@ -54,19 +53,19 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn defsession "" [room player settings]
+(defn session<> "" [room player settings]
   (let [sid (toKW "sess#" (seqint2))
         pid (id?? player)
-        s (entity<> Session
-                    (merge settings
-                           {:roomid (id?? room)
-                            :shutting? false
-                            :created (now<>)
-                            :status false
-                            :source nil
-                            :socket nil
-                            :id sid
-                            :player player}))]
+        s (mutable<> GameSession
+                     (merge settings
+                            {:roomid (id?? room)
+                             :shutting? false
+                             :created (now<>)
+                             :status false
+                             :source nil
+                             :socket nil
+                             :id sid
+                             :player player}))]
     (doto->> s
              (swap! sessions-db
                     update-in
