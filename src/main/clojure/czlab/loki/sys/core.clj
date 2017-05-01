@@ -14,9 +14,7 @@
   (:require [czlab.basal.logging :as log]
             [clojure.java.io :as io])
 
-  (:use [czlab.convoy.nettio.core]
-        [czlab.flux.wflow.core]
-        [czlab.basal.format]
+  (:use [czlab.basal.format]
         [czlab.basal.core]
         [czlab.basal.io]
         [czlab.basal.str]
@@ -24,26 +22,21 @@
         [czlab.loki.net.core]
         [czlab.loki.game.reqs])
 
-  (:import [czlab.flux.wflow Workstream Job]
-           [czlab.wabbit.plugs.io WsockMsg]
-           [czlab.jasal XData Receivable]
-           [czlab.loki.net Events]
-           [java.io File]
-           [io.netty.channel Channel]))
+  (:import [java.io File]
+           [czlab.jasal XData Receivable]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- lokiOnEvent "" [^Job job]
-
-  (let [^WsockMsg ws (.origin job)
-        ch (.socket ws)
+(defn lokiHandler "" [evt]
+  (let [s (.strit ^XData (:body evt))
+        p (get-pluglet evt)
+        ch (:socket evt)
         {:keys [type code] :as req}
-        (->> {:socket ch
-              :source (.source ws)}
-             (decodeEvent (.. ws body strit)))]
+        (decodeEvent s {:socket ch
+                        :source p})]
     (cond
       (and (isPrivate? req)
            (isCode? Events/PLAYGAME_REQ req))
@@ -58,12 +51,6 @@
         (->> (assoc req :context (:session a))
              (. ^Receivable (:room a) receive))
         (log/error "no session attached to socket")))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn lokiHandler
-  "Wrap handler as a workflow"
-  ^Workstream [] (workstream<> lokiOnEvent))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

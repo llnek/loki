@@ -33,15 +33,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defentity Player)
+(decl-object LokiPlayer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defmacro defplayer "" [userid passwd]
-  `(entity<> Player
-             {:userid ~userid
-              :passwd ~passwd
-              :id (toKW "player#" (seqint2)) }))
+(defn- player<> "" [userid passwd]
+  (object<> LokiPlayer
+            {:userid userid
+             :passwd passwd
+             :id (toKW "player#" (seqint2)) }))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -51,7 +51,7 @@
   {:pre [(hgl? userid)]}
   (locking userid-db
     (if (notin? @userid-db userid)
-      (let [p (defplayer userid passwd)
+      (let [p (player<> userid passwd)
             pid (id?? p)]
         (swap! player-db assoc pid p)
         (swap! userid-db assoc userid pid))))

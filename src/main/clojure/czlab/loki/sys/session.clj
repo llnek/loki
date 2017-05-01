@@ -19,8 +19,7 @@
         [czlab.loki.sys.util]
         [czlab.loki.net.core])
 
-  (:import [czlab.jasal Openable Sendable Idable]
-           [io.netty.channel Channel]))
+  (:import [czlab.jasal Openable Sendable Idable]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -47,9 +46,8 @@
     (let [{:keys [socket shutting? status]} @me]
       (if (and status
                (not shutting?))
-        (some-> ^Channel
-                socket
-                (.writeAndFlush (encodeEvent msg)))))))
+        (some-> socket
+                (send-ws-string (encodeEvent msg)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

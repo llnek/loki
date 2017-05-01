@@ -48,7 +48,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn encodeEventAsJson
+(defn encodeEvent
   "Turn data into a json string"
   ^String
   [{:keys [timestamp status
@@ -63,13 +63,6 @@
                  :status
                  (.value ^Events status)) msg)
         writeJsonStr)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn encodeEvent
-  "Turn data into a websocket frame"
-  ^WebSocketFrame [evt] {:pre [(map? evt)]}
-  (->> (encodeEventAsJson evt) (TextWebSocketFrame. )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
