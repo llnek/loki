@@ -12,6 +12,7 @@
   czlab.loki.net.disp
 
   (:require [czlab.basal.logging :as log]
+            [czlab.loki.xpis :as loki]
             [clojure.core.async
              :as cas
              :refer
@@ -27,71 +28,71 @@
         [czlab.basal.io]
         [czlab.basal.str])
 
-  (:import [czlab.jasal Idable Sendable Receivable]
-           [czlab.loki.net PubSub]
-           [java.io Closeable]
-           [io.netty.channel Channel]))
+  (:import [czlab.jasal Sendable Receivable]
+           [java.io Closeable]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defentity Subr
+(decl-object EventSubr
   Receivable
   (receive [me evt]
-    (when (= (:type @data)
+    (when (= (:type me)
              (:type evt))
       (log/debug "[%s]: recv'ed msg: %s" me evt)
-      (. ^Sendable (:session @data) send evt))))
+      (.send ^Sendable
+             (:session me) evt))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defmacro defsubr "" [session]
-  `(entity<> Subr {:id (toKW "subr#" (seqint2))
-                   :type Events/PUBLIC
-                   :session ~session}))
+(defmacro esubr<> "" [session]
+  `(object<> EventSubr {:id (toKW "subr#" (seqint2))
+                        :session ~session
+                        :type ::loki/public }))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defentity Dispatcher
+(decl-atomic EventDispatcher
   PubSub
-  (unsubscribeIfSession [me s]
-    (doseq [[cb _] (:handlers @data)
-            :let [pss (:session @cb)]
-            :when (objEQ? pss s)]
-      (.unsubscribe me cb)))
-  (publish [_ msg]
+  (unsubsc-if-session [me s]
+    (doseq [[su _] (:handlers @me)
+            :let [s (:session su)]
+            :when (objEQ? su s)]
+      (unsubsc me su)))
+  (publish-event [_ msg]
     (log/debug "pub msg = %s" (:code msg))
-    (doseq [[_ c] (:handlers @data)]
+    (doseq [[_ c] (:handlers @me)]
       (cas/go (cas/>! c msg))))
-  (unsubscribe [_ s]
-    (when-some [c ((:handlers @data) s)]
+  (unsubsc [me su]
+    (when-some [c (get (:handlers @me) su)]
       (cas/close! c)
-      (swap! data
-             update-in [:handlers] dissoc s)))
-  (subscribe [_ s]
-    (let [^Receivable r s
-          c (cas/chan 4)]
-      (swap! data update-in [:handlers] assoc s c)
+      (alter-atomic me
+                    update-in
+                    [:handlers] dissoc su)))
+  (subsc [_ su]
+    (let [c (cas/chan 4)]
+      (alter-atomic me
+                    update-in [:handlers] assoc su c)
       (cas/go-loop []
         (when-some [msg (cas/<! c)]
-          (if (= (:type @s)
+          (if (= (:type su)
                  (:type msg))
-            (.receive r msg))
+            (.receive ^Receivable su msg))
           (recur)))))
   Closeable
   (close [_]
-    (doseq [[_ c] (:handlers @data)]
+    (doseq [[_ c] (:handlers @me)]
       (cas/close! c))
-    (swap! data assoc :handlers {})))
+    (alter-atomic me
+                  assoc :handlers {})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defmacro defdispatcher "" []
-  `(entity<> Dispatcher
-             {:id (toKW "disp#" (seqint2))
-              :handlers {}}))
+(defmacro edispatcher<> "" []
+  `(atomic<> EventDispatcher
+             {:id (toKW "disp#" (seqint2)) :handlers {}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

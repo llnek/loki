@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.sys.util
+  czlab.loki.util
 
   (:require [czlab.basal.logging :as log])
 

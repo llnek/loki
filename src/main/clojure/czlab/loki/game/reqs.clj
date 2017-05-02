@@ -11,23 +11,21 @@
 
   czlab.loki.game.reqs
 
-  (:require [czlab.basal.resources :refer [rstr]]
+  (:require [czlab.loki.xpis :as loki :refer :all]
+            [czlab.basal.resources :refer [rstr]]
             [czlab.basal.logging :as log])
 
   (:use [czlab.basal.format]
         [czlab.basal.core]
         [czlab.basal.str]
         [czlab.basal.io]
+        [czlab.wabbit.xpis]
+        [czlab.loki.player]
         [czlab.loki.net.core]
         [czlab.loki.game.room]
-        [czlab.loki.game.core]
-        [czlab.loki.sys.player])
+        [czlab.loki.game.core])
 
-  (:import [czlab.wabbit.ctl Pluglet]
-           [czlab.jasal I18N]
-           [czlab.basal Stateful]
-           [io.netty.channel Channel]
-           [czlab.loki.net Events]))
+  (:import [czlab.jasal I18N]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -36,12 +34,12 @@
 ;;
 (defn doPlayReq
   "source json = {:gameid, :principal, :credential}"
-  [{:keys [^Pluglet source socket body] :as evt}]
+  [{:keys [source socket body] :as evt}]
 
   (let [{:keys [gameid principal credential]}
         body
         rcb (some-> source
-                    .server id?? I18N/bundle)]
+                    get-server id?? I18N/bundle)]
     (if (hgl? (sname gameid))
       (let
         [gameid (keyword gameid)
@@ -56,22 +54,22 @@
           (nil? g)
           (do->nil
             (replyError socket
-                        Events/GAME_NOK
+                        ::loki/game-nok
                         (rstr rcb "game.notok")))
           (nil? p)
           (do->nil
             (replyError socket
-                        Events/USER_NOK
+                        ::loki/user-nok
                         (rstr rcb "login.error")))
           (nil? s)
           (do->nil
             (replyError socket
-                        Events/ROOMS_FULL
+                        ::loki/rooms-full
                         (rstr rcb "room.none")))
           :else s))
       (do->nil
         (replyError socket
-                    Events/PLAYREQ_NOK
+                    ::loki/playreq-nok
                     (rstr rcb "bad.req"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -80,12 +78,12 @@
 (defn doJoinReq
   "Request to join a specific game room.  Not used now.
   source json = {:gameid, :roomid, :principal, :credential}"
-  [{:keys [^Pluglet source socket body] :as evt}]
+  [{:keys [source socket body] :as evt}]
 
   (let [{:keys [gameid roomid principal credential]}
         body
         rcb (some-> source
-                    .server id?? I18N/bundle)]
+                    get-server id?? I18N/bundle)]
     (if (and (hgl? (sname gameid))
              (hgl? (sname roomid)))
       (let
@@ -98,17 +96,17 @@
           (nil? p)
           (do->nil
             (replyError socket
-                        Events/USER_NOK
+                        ::loki/user-nok
                         (rstr rcb "login.error")))
           (nil? pss)
           (do->nil
             (replyError socket
-                        Events/ROOM_NOK
+                        ::loki/room-nok
                         (rstr rcb "room.bad")))
           :else pss))
       (do->nil
         (replyError socket
-                    Events/JOINREQ_NOK
+                    ::loki/joinreq-nok
                     (rstr rcb "bad.req"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

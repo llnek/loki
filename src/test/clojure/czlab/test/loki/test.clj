@@ -11,28 +11,33 @@
 
   czlab.test.loki.test
 
-  (:require [clojure.java.io :as io]
+  (:require [czlab.loki.xpis :as loki :refer :all]
+            [clojure.java.io :as io]
             [clojure.string :as cs])
 
-  (:use [czlab.loki.sys.session]
-        [czlab.loki.sys.player]
-        [czlab.loki.sys.util]
+  (:use [czlab.loki.session]
+        [czlab.loki.player]
+        [czlab.loki.util]
         [czlab.loki.game.core]
         [czlab.loki.game.room]
         [czlab.loki.game.reqs]
         [czlab.loki.net.core]
+        [czlab.wabbit.xpis]
         [czlab.basal.format]
         [czlab.basal.meta]
         [czlab.basal.core]
         [czlab.basal.str]
         [clojure.test])
 
-  (:import [io.netty.handler.codec.http.websocketx
-            WebSocketFrame TextWebSocketFrame]
-           [czlab.loki.game Game]
-           [czlab.loki.sys Room]
-           [czlab.basal Stateful Cljrt]
-           [czlab.loki.net Events]))
+  (:import [czlab.jasal
+            Initable
+            Startable
+            Disposable
+            LifeCycle
+            Idable
+            Restartable
+            Hierarchical]
+           [czlab.basal Cljrt]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -44,69 +49,74 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- mockDelegate "" ^Game []
-  (reify Game
-    (playerGist[_ _])
-    (onEvent [_ _])
+(defn- mockDelegate "" []
+  (reify
+    GameLogic
+    (get-player-gist[_ _])
+    (on-game-event [_ _])
+    (start-round [_ _])
+    (end-round [_])
+    Restartable
     (restart [_ _])
     (restart [_])
+    Initable
     (init [_ _])
+    Startable
     (start [_ _])
     (start [_])
-    (stop [_])
-    (startRound [_ _])
-    (endRound [_])))
+    (stop [_])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- mockExec "" []
-  (let [rts (Cljrt/newrt)
-        impl (muble<>)]
+  (let [rts (Cljrt/newrt)]
     (reify
       Execvisor
-
-      (homeDir [_] )
-      (pkeyBytes [this] (bytesit "hello world"))
-      (pkey [_] (.toCharArray "hello world"))
+      (has-child? [_ id] )
+      (get-child [_ id] )
+      (uptime-in-millis [_] )
+      (get-locale [_] )
+      (get-start-time [_] )
+      (kill9! [_] )
       (cljrt [_] rts)
+      (get-scheduler [_] )
+      (get-home-dir [_] )
 
-      (getx [_] impl)
-      (version [_] "1.0")
+      KeyAccess
+      (pkey-bytes [this] (bytesit "hello world"))
+      (pkey-chars [_] (.toCharArray "hello world"))
+
+      Idable
       (id [_] "1")
 
-      (uptimeInMillis [_] 0)
-      (locale [_] nil)
-      (startTime [_] 0)
-      (kill9 [_] )
+      Startable
       (start [this _] )
+      (start [this] )
       (stop [this] )
-      (acquireDbPool [_ gid] nil)
-      (acquireDbAPI [_ gid] nil)
-      (dftDbPool [_] nil)
-      (dftDbAPI [_] nil)
-      (child [_ sid])
-      (hasChild [_ sid])
-      (core [_] nil)
-      (config [_] {})
+
+      SqlAccess
+      (acquire-db-pool [_ gid] nil)
+      (acquire-db-api [_ gid] nil)
+      (dft-db-pool [_] nil)
+      (dft-db-api [_] nil)
+
+      Disposable
       (dispose [this]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- mockPluglet "" ^Pluglet []
-  (let [impl (muble<>)
-        exe (mockExec)]
-    (reify Pluglet
-      (isEnabled [this] true)
-      (version [_] "1")
-      (config [_] {})
-      (spec [_] {})
-      (server [this] exe)
-      (getx [_] impl)
-      (hold [_ trig millis])
+(defn- mockPluglet "" []
+  (let [exe (mockExec)]
+    (reify
+      Hierarchical
+      (parent [_] exe)
+      Idable
       (id [_] "?")
-      (dispose [_])
-      (init [this cfg0])
-      (start [this arg])
+      LifeCycle
+      (init [_ _] )
+      (start [_] )
+      (start [_ _])
+      (dispose [_] )
       (stop [_]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -132,7 +142,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn testArena "" ^Game [_ _ ] (mockDelegate))
+(defn testArena "" [_ _ ] (mockDelegate))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -141,39 +151,39 @@
   (is (do->true
         (initGameRegistry! games-meta)))
 
-  (is (let [evt (eventObj<> Events/PUBLIC  Events/QUIT evt-body {:x 7})]
-        (and (= 2 (.value ^Events (:type evt)))
-             (= Events/OK (:status evt))
-             (= 911  (.value ^Events (:code evt)))
+  (is (let [evt (eventObj<> ::loki/public ::loki/quit evt-body {:x 7})]
+        (and (= 2 (loki-msg-types (:type evt)))
+             (= ::loki/ok (:status evt))
+             (= 911  (loki-msg-codes (:code evt)))
              (map? (:body evt))
              (== 7 (:x evt)))))
 
-  (is (let [evt (errorObj<> Events/PUBLIC Events/QUIT evt-body {:x 7})]
-        (and (= 2 (.value ^Events (:type evt)))
-             (= Events/ERROR (:status evt))
-             (= 911 (.value ^Events (:code evt)))
+  (is (let [evt (errorObj<> ::loki/public ::loki/quit evt-body {:x 7})]
+        (and (= 2 (loki-msg-types (:type evt)))
+             (= ::loki/error (:status evt))
+             (= 911 (loki-msg-codes (:code evt)))
              (map? (:body evt))
              (== 7 (:x evt)))))
 
-  (is (let [^TextWebSocketFrame
-            evt (-> (eventObj<> Events/PUBLIC Events/QUIT  evt-body)
+  (is (let [evt (-> (eventObj<> ::loki/public ::loki/quit evt-body)
                     (encodeEvent ))
-            s (.text evt)]
-        (and (> (.indexOf s "2") 0)
-             (> (.indexOf s "200") 0)
-             (> (.indexOf s "911") 0))))
+            s? (string? evt)]
+        (and s?
+             (> (.indexOf evt "2") 0)
+             (> (.indexOf evt "200") 0)
+             (> (.indexOf evt "911") 0))))
 
-  (is (let [^TextWebSocketFrame
-            evt (-> (eventObj<> Events/PUBLIC Events/QUIT)
+  (is (let [evt (-> (eventObj<> ::loki/public ::loki/quit)
                     (encodeEvent))
-            s (.text evt)]
-        (and (> (.indexOf s "2") 0)
-             (> (.indexOf s "200") 0)
-             (> (.indexOf s "911") 0))))
+            s? (string? evt)]
+        (and s?
+             (> (.indexOf evt "2") 0)
+             (> (.indexOf evt "200") 0)
+             (> (.indexOf evt "911") 0))))
 
   (is (let [evt (decodeEvent evt-json {:x 3})]
-        (and (= Events/PUBLIC (:type evt))
-             (= Events/QUIT (:code evt))
+        (and (= ::loki/PUBLIC (:type evt))
+             (= ::loki/quit (:code evt))
              (== 911 (get-in evt [:body :a])))))
 
   (is (some? (lookupGame "game-1")))
@@ -188,12 +198,12 @@
              (nil? c4))))
 
   (is (let [c1 (lookupPlayer "u1" "p1") ;; user#2
-            _ (.update ^Stateful c1 {:email "e" :name "n"})
-            e (:email @c1)
-            n (:name @c1)
-            nn (:userid @c1)
+            c1 (assoc c1 :email "e" :name "n")
+            e (:email c1)
+            n (:name c1)
+            nn (:userid c1)
             id (id?? c1)
-            cs (countSessions c1)
+            cs (count-sessions c1)
             _ (logout c1)
             c4 (lookupPlayer "u1")]
         (and (some? c1)
@@ -216,8 +226,8 @@
                                  :principal  "u2" ;user#4
                                  :credential "p2"}})
             gid (keyword gid)
-            r1 (some-> ^Stateful s .deref :roomid)
-            r2 (some-> ^Stateful t .deref :roomid)
+            r1 (:roomid (some-> s deref))
+            r2 (:roomid (some-> t deref))
             ok
             (and (some? r1)
                  (some? r2)
@@ -226,7 +236,7 @@
                  (= 2 (:b @t))
                  (== 1 (countGameRooms gid))
                  (== 0 (countFreeRooms gid))
-                 (not (.canOpen (lookupGameRoom gid r1))))
+                 (not (can-open-room? (lookupGameRoom gid r1))))
             _ (clearFreeRooms gid)
             _ (clearGameRooms gid)]
         (and ok
@@ -240,11 +250,11 @@
                                  :credential "p3"}}) ;user#5
             gid (keyword gid)
             r (lookupFreeRoom gid
-                              (some-> ^Stateful s .deref :roomid))
+                              (:roomid (some-> s deref)))
             ok
             (and (some? r)
                  (== 1 (countFreeRooms gid))
-                 (not (.canOpen r)))
+                 (not (can-open-room? r)))
             _ (removeFreeRoom gid (id?? r))]
         (and ok
              (== 0 (countFreeRooms gid)))))
@@ -258,8 +268,8 @@
             pu4 (:player @s)
             cnt (countSessions pu4)
             r (lookupFreeRoom (keyword gid)
-                              (some-> ^Stateful s .deref :roomid))
-            na (not (.canOpen r))
+                              (:roomid (some-> s deref)))
+            na (not (can-open-room? r))
             t (doJoinReq {:source (mockPluglet)
                           :body {:roomid (sname (some-> r id??))
                                  :gameid gid
@@ -267,7 +277,7 @@
                                  :credential "p5"}})
             gid (keyword gid)
             r2 (lookupGameRoom gid
-                               (some-> ^Stateful t .deref :roomid))
+                               (:roomid (some-> t deref)))
             _ (logout pu4)
             cnt2 (countSessions pu4)
             pu4_nok (lookupPlayer "u4")]
@@ -279,7 +289,7 @@
              (nil? pu4_nok)
              na
              (identical? r r2)
-             (not (.canOpen r2))
+             (not (can-open-room? r2))
              (== 1 (countGameRooms gid))
              (== 0 (countFreeRooms gid))
              (do->true (clearGameRooms gid))

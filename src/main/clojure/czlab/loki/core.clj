@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.sys.core
+  czlab.loki.core
 
   (:require [czlab.basal.logging :as log]
             [clojure.java.io :as io])
@@ -18,7 +18,7 @@
         [czlab.basal.core]
         [czlab.basal.io]
         [czlab.basal.str]
-        [czlab.loki.sys.util]
+        [czlab.loki.util]
         [czlab.loki.net.core]
         [czlab.loki.game.reqs])
 
@@ -39,18 +39,20 @@
                         :source p})]
     (cond
       (and (isPrivate? req)
-           (isCode? Events/PLAYGAME_REQ req))
+           (isCode? loki-event-playgame-req req))
       (doPlayReq req)
 
       (and (isPrivate? req)
-           (isCode? Events/JOINGAME_REQ req))
+           (isCode? loki-event-joingame-req req))
       (doJoinReq req)
 
       :else
-      (if-some [a (getAKey ch RMSN)]
-        (->> (assoc req :context (:session a))
-             (. ^Receivable (:room a) receive))
-        (log/error "no session attached to socket")))))
+      (let [{:keys [room session]}
+            (getAKey ch RMSN)]
+        (if (and session room)
+          (->> (assoc req :context session )
+               (.receive ^Receivable room))
+          (log/error "no session attached to socket"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

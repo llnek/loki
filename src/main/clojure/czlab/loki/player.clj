@@ -9,14 +9,14 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.sys.player
+  czlab.loki.player
 
   (:require [czlab.basal.logging :as log])
 
   (:use [czlab.basal.core]
         [czlab.basal.io]
         [czlab.basal.str]
-        [czlab.loki.sys.session])
+        [czlab.loki.session])
 
   (:import [czlab.jasal Idable]))
 

@@ -11,7 +11,8 @@
 
   czlab.loki.net.core
 
-  (:require [czlab.basal.logging :as log])
+  (:require [czlab.loki.xpis :as loki :refer :all]
+            [czlab.basal.logging :as log])
 
   (:use [czlab.basal.format]
         [czlab.basal.core]
@@ -20,17 +21,14 @@
   (:import [io.netty.handler.codec.http.websocketx
             WebSocketFrame
             TextWebSocketFrame]
-           [io.netty.channel Channel]
-           [czlab.loki.sys Room]
            [czlab.jasal Sendable]
-           [clojure.lang APersistentMap]
-           [czlab.loki.net Events EventError]))
+           [clojure.lang APersistentMap]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defmacro isPrivate? "" [evt] `(= Events/PRIVATE (:type ~evt)))
-(defmacro isPublic? "" [evt] `(= Events/PUBLIC (:type ~evt)))
+(defmacro isPrivate? "" [evt] `(= ::loki/private (:type ~evt)))
+(defmacro isPublic? "" [evt] `(= ::loki/public (:type ~evt)))
 (defmacro isCode? "" [c evt] `(= ~c (:code ~evt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -41,9 +39,9 @@
 
   (let [{:keys [type code status]}
         evt
-        m {:type (str type)
-           :code (str code)
-           :status (str status)}]
+        m {:type (get-enum-str loki-msg-types type)
+           :code (get-enum-str loki-msg-codes code)
+           :status (get-enum-str loki-status-codes status)}]
     (writeJsonStr (merge evt m))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -54,14 +52,14 @@
   [{:keys [timestamp status
            type code body] :as evt}]
   {:pre [(some? type)(some? code)]}
-  (let [msg {:type (.value ^Events type)
-             :code (.value ^Events code)
+  (let [msg {:type (loki-msg-types type)
+             :code (loki-msg-codes code)
              :body (or body {})
              :timestamp (or timestamp (now<>))}]
     (-> (if status
           (assoc msg
                  :status
-                 (.value ^Events status)) msg)
+                 (loki-status-codes status)) msg)
         writeJsonStr)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -76,12 +74,14 @@
    (try!
      (let [{:keys [type code] :as evt}
            (readJsonStrKW data)
-           t (and (number? type) (Events/get type))
-           c (and (number? code) (Events/get code))]
+           t (and (number? type)
+                  (lookup-enum-int loki-msg-types type))
+           c (and (number? code)
+                  (lookup-enum-int loki-msg-codes code))]
        (cond
-         (or (false? t) (nil? t))
+         (not t)
          (trap! EventError (format "Event type info: %d" t))
-         (or (false? c) (nil? c))
+         (not c)
          (trap! EventError (format "Event code info: %d" c))
          :else
          (merge evt
@@ -96,7 +96,7 @@
    {:pre [(some? etype)
           (some? ecode)]}
    (let [body (if (string? body) {:message body} body)
-         obj {:status Events/ERROR
+         obj {:status ::loki/error
               :timestamp (now<>)
               :type etype
               :code ecode
@@ -124,7 +124,7 @@
           (some? ecode)
           (or (nil? body)
               (map? body))]}
-   (let [obj {:status Events/OK
+   (let [obj {:status ::loki/ok
               :timestamp (now<>)
               :type etype
               :code ecode
@@ -147,61 +147,65 @@
 (defn privateEvent<> ""
   ([code body] (privateEvent<> code body nil))
   ([code body arg]
-   (eventObj<> Events/PRIVATE code body arg)))
+   (eventObj<> ::loki/private code body arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn publicEvent<> ""
   ([code body] (publicEvent<> code body nil))
   ([code body arg]
-   (eventObj<> Events/PUBLIC code body arg)))
+   (eventObj<> ::loki/public code body arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn replyEvent
-  "Reply back a msg" [^Channel ch msg]
+  "Reply back a msg" [ch msg]
 
   (log/debug (str "reply back a msg "
                   "type: %s, code: %s")
-             (:type msg) (:code msg))
+             (get-enum-str loki-msg-types (:type msg))
+             (get-enum-str loki-msg-codes (:code msg)))
   (do->nil
-    (if (some? ch)
-        (->> (encodeEvent msg)
-             (.writeAndFlush ch)))))
+    (some-> ch
+            (send-ws-string (encodeEvent msg)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn replyError
   "Reply back an error"
-  [^Channel ch error msg]
+  [ch error msg]
 
-  (replyEvent ch (errorObj<> Events/PRIVATE error msg)))
+  (replyEvent ch (errorObj<> ::loki/private error msg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn isQuit? "" [evt]
   (and (isPrivate? evt)
-       (isCode? Events/QUIT evt)))
+       (isCode? ::loki/quit evt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn isMove? "" [evt]
   (and (isPrivate? evt)
-       (isCode? Events/PLAY_MOVE evt)))
+       (isCode? ::loki/play-move evt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn pokeWait! ""
   ([room body] (pokeWait! room body nil))
   ([room body arg]
-   (. ^Sendable room send (privateEvent<> Events/POKE_WAIT body arg))))
+   (.send ^Sendable
+          room
+          (privateEvent<> ::loki/poke-wait body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn pokeMove! ""
   ([room body] (pokeMove! room body nil))
   ([room body arg]
-   (. ^Sendable room send (privateEvent<> Events/POKE_MOVE body arg))))
+   (.send ^Sendable
+          room
+          (privateEvent<> ::loki/poke-move body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -210,22 +214,22 @@
   ([room body arg]
    (->>
      (if arg
-       (privateEvent<> Events/SYNC_ARENA body arg)
-       (publicEvent<> Events/SYNC_ARENA body))
-     (. ^Sendable room send))))
+       (privateEvent<> ::loki/sync-arena body arg)
+       (publicEvent<> ::loki/sync-arena body))
+     (.send ^Sendable room ))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn bcast! ""
   ([room code body] (bcast! room code body nil))
   ([room code body arg]
-   (. ^Room room broadcast (publicEvent<> code body arg))))
+   (broad-cast room (publicEvent<> code body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn stop! ""
   ([room body] (stop! room body nil))
-  ([room body arg] (bcast! room Events/STOP body arg)))
+  ([room body arg] (bcast! room ::loki/stop body arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

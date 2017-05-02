@@ -11,16 +11,18 @@
 
   czlab.loki.game.arena
 
-  (:require [czlab.basal.logging :as log]
+  (:require [czlab.loki.xpis :as loki :refer :all]
+            [czlab.basal.logging :as log]
             [clojure.java.io :as io])
 
   (:use [czlab.loki.net.core]
         [czlab.loki.net.disp]
+        [czlab.wabbit.xpis]
         [czlab.basal.format]
         [czlab.basal.core]
         [czlab.basal.io]
         [czlab.basal.str]
-        [czlab.loki.sys.session])
+        [czlab.loki.session])
 
   (:import [java.util.concurrent.atomic AtomicInteger]
            [czlab.jasal
@@ -32,123 +34,114 @@
             Receivable
             Sendable
             Dispatchable]
-           [java.io Closeable]
-           [czlab.loki.game Game]
-           [czlab.loki.sys Room]
-           [czlab.wabbit.ctl Pluglet]
-           [czlab.loki.net Events PubSub]))
+           [java.io Closeable]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defn- fmtStartBody [^Game impl sessions]
+(defn- fmtStartBody [impl sessions]
   (preduce<map>
     #(let [{:keys [number player]}
            (deref %2)
            yid (id?? player)
-           g (.playerGist impl yid)]
+           g (player-gist impl yid)]
        (assoc! %1
                yid
                (merge {:pnum number} g))) sessions))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defentity Arena
+(decl-mutable GameArena
   Openable
   (open [me _]
-    (let [{:keys [disp source conns game]}
-          @data
-          rt (.. ^Pluglet
-                  source
-                  server cljrt)
-          sss (sort-by #(:created (deref %))
-                       (vals conns))
-          g (.callEx rt
-                     (strKW (:implClass @game))
-                     (vargs* Object me sss))]
-          (log/debug "activating room [%s]" me)
-          (doseq [s sss]
-            (. ^PubSub disp subscribe (defsubr s)))
-          (swap! data
-                 assoc
-                 :impl g :latch conns
-                 :starting? false
-                 :opened? true :active? false)
-          (. ^Initable g init _empty-map_)
-          (bcast! me Events/START (fmtStartBody g sss))))
+    (let [{:keys [disp conns source game]} @me
+          sss (sort-by #(:created (deref %)) (vals conns))
+          g (@(:implClass game) me sss)]
+      (log/debug "activating room [%s]" me)
+      (doseq [s sss] (subsc disp (esubr<> s)))
+      (copy* me
+             {:impl g
+              :latch conns
+              :starting? false
+              :opened? true :active? false})
+      (.init ^Initable g nil)
+      (bcast! me ::loki/start (fmtStartBody g sss))))
   (close [me]
     (log/debug "closing arena [%s]" me)
-    (doseq [[_ s] (:conns @data)]
+    (doseq [[_ s] (:conns @me)]
       (doto s removeSession closeQ))
-    (swap! data assoc :conns _empty-map_)
-    ((:finz @data) (id?? me)))
+    (setf! me :conns nil)
+    ((:finz @me) (id?? me)))
   Restartable
   (restart [me _]
     (log/debug "arena#restart() called")
-    (->> (-> (:impl @data)
-             (fmtStartBody (vals (:conns @data))))
-         (bcast! me Events/RESTART)))
-  (restart [_] (.restart _ _empty-map_))
+    (->> (-> (:impl @me)
+             (fmtStartBody (vals (:conns @me))))
+         (bcast! me ::loki/restart)))
+  (restart [me] (.restart me nil))
   Startable
-  (start [_ arg]
+  (start [me arg]
     (log/debug "arena#start called")
-    (swap! data assoc :active? true)
-    (. ^Startable (:impl @data) start arg))
-  (start [_] (.start _ _empty-map_))
-  (stop [_]
-    (swap! data assoc :active? false))
-  Room
-  (countPlayers [_] (count (:conns @data)))
-  (broadcast [_ evt]
-    (. ^PubSub (:disp @data) publish evt))
-  (canOpen [me]
-    (and (not (:opened? @data))
-         (>= (.countPlayers me)
-             (:minPlayers @(:game @data)))))
-  (onEvent [me evt]
+    (setf! me :active? true)
+    (.start ^Startable (:impl @me) arg))
+  (start [me] (.start me nil))
+  (stop [me]
+    (setf! me :active? false))
+  GameRoom
+  (count-players [me] (count (:conns @me)))
+  (broad-cast [me evt]
+    (publish-event (:disp @me) evt))
+  (can-open-room? [me]
+    (and (not (:opened? @me))
+         (>= (count-players me)
+             (:minPlayers (:game @me)))))
+  (on-room-event [me evt]
     (let [{:keys [context body]} evt
-          {:keys [impl latch conns active?]} @data]
+          {:keys [impl latch conns active?]} @me]
       (assert (some? context))
       (cond
-        (and (not active?) (isCode? Events/REPLAY evt))
+        (and (not active?) (isCode? ::loki/replay evt))
         (locking me
-          (when (and (not (:starting? @data))
-                     (empty? (:latch @data)))
-            (swap! data assoc :latch conns :starting true)
+          (when (and (not (:starting? @me))
+                     (empty? (:latch @me)))
+            (copy* me {:latch conns :starting true})
             (.restart me)))
 
-        (and (not active?) (isCode? Events/STARTED evt))
-        (if (in? latch (:id @context))
+        (and (not active?) (isCode? ::loki/started evt))
+        (if (in? latch (id?? context))
           (locking me
             (log/debug "latch: drop-off: %s" context)
-            (swap! data update-in [:latch] dissoc (:id @context))
-            (if (empty? (:latch @data))
-              (. ^Startable me start (readJsonStrKW body)))))
+            (setf! me
+                   :latch
+                   (dissoc (:latch @me)
+                           (id?? context)))
+            (if (empty? (:latch @me))
+              (.start me (readJsonStrKW body)))))
 
         (and active? (some? latch) (empty? latch))
-        (let [rc (. ^Game impl onEvent evt)]
+        (let [rc (on-game-event impl evt)]
           (when (and (isQuit? evt)
-                     (= rc Events/TEAR_DOWN))
+                     (= rc ::loki/tear-down))
             (bcast! me
-                    Events/PLAY_SCRUBBED
+                    ::loki/play-scrubbed
                     {:pnum (:number @context)})
             (pause 1000)
-            (. ^Closeable me close))))))
+            (.close me))))))
   Sendable
   (send [me msg]
     (cond
       (isPrivate? msg) (some-> ^Sendable
                                (:context msg) (.send msg))
-      (isPublic? msg) (.broadcast me msg)))
+      (isPublic? msg) (broad-cast me msg)))
   Receivable
   (receive [me evt]
-    (when (:opened? @data)
+    (when (:opened? @me)
       (log/debug "room recv'ed msg %s" evt)
       (cond
-        (isPublic? evt) (.broadcast me evt)
-        (isPrivate? evt) (.onEvent me evt)))))
+        (isPublic? evt) (broad-cast me evt)
+        (isPrivate? evt) (on-room-event me evt)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

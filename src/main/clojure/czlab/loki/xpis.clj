@@ -9,7 +9,7 @@
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
-  czlab.loki.sys.xpis
+  czlab.loki.xpis
 
   (:require [czlab.basal.logging :as log])
 
@@ -18,62 +18,64 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(decl-special-enum loki-msg-types
 
-(def loki-event-type-protected 1)
-(def loki-event-type-public 2)
-(def loki-event-type-private 3)
+                   protected 1
+                   public 2
+                   private 3)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(decl-special-enum loki-status-codes
 
-;; reply codes
-(def loki-event-status-error 500)
-(def loki-event-status-ok 200)
+                   ok 200
+                   error 500)
 
-;; request codes
-(def loki-event-playgame-req 600)
-(def loki-event-playreq-ok 601)
-(def loki-event-playreq-nok 602)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(decl-special-enum loki-msg-codes
 
-(def loki-event-joingame-req 651)
-(def loki-event-joinreq-ok 652)
-(def loki-event-joinreq-nok 653)
+                   playgame-req 600
+                   playreq-ok 601
+                   playreq-nok 602
+                   joingame-req 651
+                   joinreq-ok 652
+                   joinreq-nok 653
 
-;; user and room codes
+                   user-nok 700
+                   game-nok 701
+                   room-nok 702
+                   room-filled 703
+                   rooms-full 704
 
-(def loki-event-user-nok 700)
-(def loki-event-game-nok 701)
-(def loki-event-room-nok 702)
-(def loki-event-room-filled 703)
-(def loki-event-rooms-full 704)
+                   player-joined 800
+                   await-start 801
 
-;; msg codes
+                   connected 820
+                   started 821
+                   closed 822
+                   tear-down 823
 
-(def loki-event-player-joined 800)
-(def loki-event-await-start 801)
+                   restart 840
+                   start 841
+                   stop 842
+                   start-round 843
+                   end-round 844
 
-(def loki-event-connected 820)
-(def loki-event-started 821)
-(def loki-event-closed 822)
-(def loki-event-tear-down 823)
+                   poke-rumble 860
+                   poke-move 861
+                   poke-wait 862
+                   sync-arena 863
 
-(def loki-event-restart 840)
-(def loki-event-start 841)
-(def loki-event-stop 842)
-(def loki-event-start-round 843)
-(def loki-event-end-round 844)
+                   replay 880
+                   play-move 881
+                   play-scrubbed 882
 
-(def loki-event-poke-rumble 860)
-(def loki-event-poke-move 861)
-(def loki-event-poke-wait 862)
-(def loki-event-sync-arena 863)
+                   game-won 890
+                   game-tie 891
 
-(def loki-event-replay 880)
-(def loki-event-play-move 881)
-(def loki-event-play-scrubbed 882)
-
-(def loki-event-game-won 890)
-(def loki-event-game-tie 891)
-
-;; end game
-(def loki-event-quit 911)
+                   quit 911)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -111,7 +113,7 @@
   ""
   (broad-cast [_ evt] "")
   (count-players [_] "")
-  (room-open? [_] "")
+  (can-open-room? [_] "")
   (on-room-event [_ evt] ""))
 
 

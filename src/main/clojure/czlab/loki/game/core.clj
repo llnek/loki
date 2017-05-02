@@ -18,6 +18,7 @@
         [czlab.basal.str])
 
   (:import [czlab.jasal Idable]
+           [czlab.basal Cljrt]
            [java.io File]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -29,11 +30,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defentity GameInfo)
+(decl-object GameInfo)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defmacro defgame-info "" [seed] `(entity<> GameInfo ~seed))
+(defmacro game<> "" [seed] `(object<> GameInfo ~seed))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -44,13 +45,16 @@
            {:keys [enabled? minp maxp impl]
             :or {minp 1 maxp 1 impl ""}}
            (:network g)
+           ok (!false? enabled?)
            m
-           (defgame-info
-             {:supportNetwork (!false? enabled?)
+           (game<>
               :maxPlayers (if (spos? maxp) maxp minp)
               :minPlayers (if (spos? minp) minp 1)
+             {:supportNetwork ok
               :name (:name g)
-              :implClass impl
+              :implClass (with-open
+                           [clj (Cljrt/newrt)]
+                           (if ok (.varIt clj impl)))
               :id gameid})]
        (assoc! %1 gameid m)) games))
 
