@@ -46,11 +46,12 @@
             :or {minp 1 maxp 1 impl ""}}
            (:network g)
            ok (!false? enabled?)
+           impl (strKW impl)
            m
            (game<>
-              :maxPlayers (if (spos? maxp) maxp minp)
+             {:maxPlayers (if (spos? maxp) maxp minp)
               :minPlayers (if (spos? minp) minp 1)
-             {:supportNetwork ok
+              :supportNetwork ok
               :name (:name g)
               :implClass (with-open
                            [clj (Cljrt/newrt)]

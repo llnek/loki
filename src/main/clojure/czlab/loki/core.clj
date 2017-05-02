@@ -11,7 +11,8 @@
 
   czlab.loki.core
 
-  (:require [czlab.basal.logging :as log]
+  (:require [czlab.loki.xpis :as loki :refer :all]
+            [czlab.basal.logging :as log]
             [clojure.java.io :as io])
 
   (:use [czlab.basal.format]
@@ -19,6 +20,8 @@
         [czlab.basal.io]
         [czlab.basal.str]
         [czlab.loki.util]
+        [czlab.convoy.core]
+        [czlab.wabbit.xpis]
         [czlab.loki.net.core]
         [czlab.loki.game.reqs])
 
@@ -39,16 +42,16 @@
                         :source p})]
     (cond
       (and (isPrivate? req)
-           (isCode? loki-event-playgame-req req))
+           (isCode? ::loki/playgame-req req))
       (doPlayReq req)
 
       (and (isPrivate? req)
-           (isCode? loki-event-joingame-req req))
+           (isCode? ::loki/joingame-req req))
       (doJoinReq req)
 
       :else
       (let [{:keys [room session]}
-            (getAKey ch RMSN)]
+            (get-socket-attr ch RMSN)]
         (if (and session room)
           (->> (assoc req :context session )
                (.receive ^Receivable room))

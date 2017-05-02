@@ -46,7 +46,7 @@
     #(let [{:keys [number player]}
            (deref %2)
            yid (id?? player)
-           g (player-gist impl yid)]
+           g (get-player-gist impl yid)]
        (assoc! %1
                yid
                (merge {:pnum number} g))) sessions))
@@ -55,6 +55,7 @@
 ;;
 (decl-mutable GameArena
   Openable
+  (open [me] (.open me nil))
   (open [me _]
     (let [{:keys [disp conns source game]} @me
           sss (sort-by #(:created (deref %)) (vals conns))
@@ -92,7 +93,7 @@
   GameRoom
   (count-players [me] (count (:conns @me)))
   (broad-cast [me evt]
-    (publish-event (:disp @me) evt))
+    (pub-event (:disp @me) evt))
   (can-open-room? [me]
     (and (not (:opened? @me))
          (>= (count-players me)
@@ -145,17 +146,17 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defmacro defarena "" [game finzer source]
-  `(entity<> Arena {:numctr (AtomicInteger.)
-                    :disp (defdispatcher)
-                    :id (keyword (uid<>))
-                    :shutting? false
-                    :opened? false
-                    :active? false
-                    :source ~source
-                    :finz ~finzer
-                    :game ~game
-                    :conns {} }))
+(defmacro arena<> "" [game finzer source]
+  `(mutable<> GameArena {:numctr (AtomicInteger.)
+                         :disp (edispatcher<>)
+                         :id (keyword (uid<>))
+                         :shutting? false
+                         :opened? false
+                         :active? false
+                         :source ~source
+                         :finz ~finzer
+                         :game ~game
+                         :conns {} }))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

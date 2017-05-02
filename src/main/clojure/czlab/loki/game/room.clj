@@ -11,14 +11,15 @@
 
   czlab.loki.game.room
 
-  (:require [czlab.basal.logging :as log])
+  (:require [czlab.loki.xpis :as loki :refer :all]
+            [czlab.basal.logging :as log])
 
   (:use [flatland.ordered.map]
         [czlab.basal.format]
         [czlab.basal.core]
         [czlab.basal.str]
+        [czlab.convoy.core]
         [czlab.wabbit.xpis]
-        [czlab.loki.xpis]
         [czlab.loki.util]
         [czlab.loki.session]
         [czlab.loki.net.core]
@@ -152,14 +153,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn lookupFreeRoom
-  "" ^Room [gameid roomid]
+  "" [gameid roomid]
   (log/debug "looking for room(F): %s, game: %s" roomid gameid)
   (get (@free-rooms gameid) roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn lookupGameRoom
-  "" ^Room [gameid roomid]
+  "" [gameid roomid]
   (log/debug "looking for room(A): %s, game: %s" roomid gameid)
   (get (@game-rooms gameid) roomid))
 
@@ -169,7 +170,7 @@
   "" [game {:keys [source] :as options}]
 
   (let [p (partial removeGameRoom (id?? game))
-        room (defarena game p source)]
+        room (arena<> game p source)]
     (log/debug "created a new room(F): %s" room)
     room))
 
@@ -184,12 +185,12 @@
           n (. ^AtomicInteger
                numctr
                incrementAndGet)
-          s (defsession room
-                        player
-                        (merge arg {:number n}))]
-      (swap! (.state ^Stateful room)
-             update-in
-             [:conns] assoc (id?? s) s)
+          s (session<> room
+                       player
+                       (merge arg {:number n}))]
+      (setf! room
+             :conns
+             (assoc conns (id?? s) s))
       (doto s addSession))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -198,13 +199,12 @@
   "Disconnect a player from room"
   [room session]
   (let [{:keys [player]} @session
-        {:keys [disp]} @room]
-    (swap! (.state ^Stateful room)
-           update-in
-           [:conns]
-           dissoc (id?? session))
+        {:keys [conns disp]} @room]
+    (setf! room
+           :conns
+           (dissoc conns (id?? session)))
     (removeSession session)
-    (. ^PubSub disp unsubscribeIfSession session)))
+    (unsubsc-if-session disp session)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -212,31 +212,31 @@
   "" [game plyr arg]
 
   (locking _room-mutex_
-    (let [^Room room (or (getFreeRoom (id?? game))
+    (let [room (or (getFreeRoom (id?? game))
                          (newFreeRoom game arg))
           s (get-in arg [:body :settings])
           pss (some-> room (connect plyr s))]
       (when (some? pss)
         (let
-          [^Channel ch (:socket arg)
+          [ch (:socket arg)
            src {:gameid (sname (id?? game))
                 :roomid (id?? room)
                 :puid (id?? plyr)
                 :pnum (:number @pss)}
-           evt (privateEvent<> Events/PLAYREQ_OK src)]
-          (. ^Openable pss open arg)
-          (setAKey ch RMSN {:room room :session pss})
+           evt (privateEvent<> ::loki/playreq-ok src)]
+          (.open ^Openable pss arg)
+          (set-socket-attr ch RMSN {:room room :session pss})
           (log/debug "replying msg to user: %s" evt)
           (replyEvent ch evt)
           (bcast! room
-                  Events/PLAYER_JOINED
+                  ::loki/player-joined
                   (select-keys src [:pnum :puid]))
-          (if (.canOpen room)
+          (if (can-open-room? room)
             (do
               (log/debug "room has enough players, can open")
               (log/debug "room.canOpen = true")
               (addGameRoom room)
-              (.open ^Openable room _empty-map_))
+              (.open ^Openable room))
             (addFreeRoom room))))
       pss)))
 
@@ -247,25 +247,25 @@
   {:pre [(some? plyr)]}
 
   (locking _room-mutex_
-    (let [^Room room (or (lookupGameRoom gameid roomid)
+    (let [room (or (lookupGameRoom gameid roomid)
                          (getFreeRoom gameid roomid))
           s (get-in arg [:body :settings])
-          game (some-> ^Stateful room .deref :game)
+          game (:game (some-> room deref))
           ch (:socket arg)]
       (when (and room
-                 (< (.countPlayers room)
-                    (:maxPlayers @game)))
+                 (< (count-players room)
+                    (:maxPlayers game)))
         (let [pss (connect room plyr s)
               src {:gameid (sname (id?? game))
                    :roomid (id?? room)
                    :puid (id?? plyr)
                    :pnum (:number @pss)}
-              evt (privateEvent<> Events/JOINREQ_OK src)]
+              evt (privateEvent<> ::loki/joinreq-ok src)]
           (. ^Openable pss open arg)
-          (setAKey ch RMSN {:room room :session pss})
+          (set-socket-attr ch RMSN {:room room :session pss})
           (replyEvent ch evt)
           (log/debug "replying back to user: %s" evt)
-          (if (.canOpen room)
+          (if (can-open-room? room)
             (do
               (log/debug "room has enough players, can open")
               (log/debug "room.canOpen = true")

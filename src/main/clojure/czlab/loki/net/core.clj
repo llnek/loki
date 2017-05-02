@@ -15,14 +15,12 @@
             [czlab.basal.logging :as log])
 
   (:use [czlab.basal.format]
+        [czlab.convoy.core]
         [czlab.basal.core]
         [czlab.basal.str])
 
-  (:import [io.netty.handler.codec.http.websocketx
-            WebSocketFrame
-            TextWebSocketFrame]
-           [czlab.jasal Sendable]
-           [clojure.lang APersistentMap]))
+  (:import [clojure.lang APersistentMap]
+           [czlab.jasal DataError Sendable]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -52,14 +50,14 @@
   [{:keys [timestamp status
            type code body] :as evt}]
   {:pre [(some? type)(some? code)]}
-  (let [msg {:type (loki-msg-types type)
-             :code (loki-msg-codes code)
+  (let [msg {:type (get loki-msg-types type)
+             :code (get loki-msg-codes code)
              :body (or body {})
              :timestamp (or timestamp (now<>))}]
     (-> (if status
           (assoc msg
                  :status
-                 (loki-status-codes status)) msg)
+                 (get loki-status-codes status)) msg)
         writeJsonStr)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -80,9 +78,9 @@
                   (lookup-enum-int loki-msg-codes code))]
        (cond
          (not t)
-         (trap! EventError (format "Event type info: %d" t))
+         (trap! DataError (format "Event type info: %d" t))
          (not c)
-         (trap! EventError (format "Event code info: %d" c))
+         (trap! DataError (format "Event code info: %d" c))
          :else
          (merge evt
                 {:type t :code c} extras))))))

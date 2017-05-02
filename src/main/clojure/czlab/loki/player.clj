@@ -75,7 +75,7 @@
 ;;
 (defn logout "" [player]
   (removeSessions player)
-  (removePlayer (:userid @player)))
+  (removePlayer (:userid player)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

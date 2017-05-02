@@ -18,6 +18,7 @@
   (:use [czlab.loki.session]
         [czlab.loki.player]
         [czlab.loki.util]
+        [czlab.basal.meta]
         [czlab.loki.game.core]
         [czlab.loki.game.room]
         [czlab.loki.game.reqs]
@@ -152,16 +153,16 @@
         (initGameRegistry! games-meta)))
 
   (is (let [evt (eventObj<> ::loki/public ::loki/quit evt-body {:x 7})]
-        (and (= 2 (loki-msg-types (:type evt)))
+        (and (= 2 (get loki-msg-types (:type evt)))
              (= ::loki/ok (:status evt))
-             (= 911  (loki-msg-codes (:code evt)))
+             (= 911  (get loki-msg-codes (:code evt)))
              (map? (:body evt))
              (== 7 (:x evt)))))
 
   (is (let [evt (errorObj<> ::loki/public ::loki/quit evt-body {:x 7})]
-        (and (= 2 (loki-msg-types (:type evt)))
+        (and (= 2 (get loki-msg-types (:type evt)))
              (= ::loki/error (:status evt))
-             (= 911 (loki-msg-codes (:code evt)))
+             (= 911 (get loki-msg-codes (:code evt)))
              (map? (:body evt))
              (== 7 (:x evt)))))
 
@@ -182,7 +183,7 @@
              (> (.indexOf evt "911") 0))))
 
   (is (let [evt (decodeEvent evt-json {:x 3})]
-        (and (= ::loki/PUBLIC (:type evt))
+        (and (= ::loki/public (:type evt))
              (= ::loki/quit (:code evt))
              (== 911 (get-in evt [:body :a])))))
 
@@ -203,7 +204,7 @@
             n (:name c1)
             nn (:userid c1)
             id (id?? c1)
-            cs (count-sessions c1)
+            cs (countSessions c1)
             _ (logout c1)
             c4 (lookupPlayer "u1")]
         (and (some? c1)
@@ -216,6 +217,7 @@
 
   (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
+                          :socket (new<> "io.netty.channel.embedded.EmbeddedChannel")
                           :body {:gameid gid
                                  :settings {:a 1}
                                  :principal  "u1"
@@ -245,6 +247,7 @@
 
   (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
+                          :socket (new<> "io.netty.channel.embedded.EmbeddedChannel")
                           :body {:gameid gid
                                  :principal  "u3"
                                  :credential "p3"}}) ;user#5
@@ -261,6 +264,7 @@
 
   (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
+                          :socket (new<> "io.netty.channel.embedded.EmbeddedChannel")
                           :body {:gameid gid
                                  :principal  "u4"
                                  :credential "p4"}})

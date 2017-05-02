@@ -11,8 +11,8 @@
 
   czlab.loki.net.disp
 
-  (:require [czlab.basal.logging :as log]
-            [czlab.loki.xpis :as loki]
+  (:require [czlab.loki.xpis :as loki :refer :all]
+            [czlab.basal.logging :as log]
             [clojure.core.async
              :as cas
              :refer
@@ -61,7 +61,7 @@
             :let [s (:session su)]
             :when (objEQ? su s)]
       (unsubsc me su)))
-  (publish-event [_ msg]
+  (pub-event [me msg]
     (log/debug "pub msg = %s" (:code msg))
     (doseq [[_ c] (:handlers @me)]
       (cas/go (cas/>! c msg))))
@@ -71,18 +71,20 @@
       (alter-atomic me
                     update-in
                     [:handlers] dissoc su)))
-  (subsc [_ su]
-    (let [c (cas/chan 4)]
+  (subsc [me su]
+    (let [^Receivable r su
+          c (cas/chan 4)]
       (alter-atomic me
                     update-in [:handlers] assoc su c)
       (cas/go-loop []
         (when-some [msg (cas/<! c)]
           (if (= (:type su)
                  (:type msg))
-            (.receive ^Receivable su msg))
+            ;;cant type hint inside async code
+            (.receive r msg))
           (recur)))))
   Closeable
-  (close [_]
+  (close [me]
     (doseq [[_ c] (:handlers @me)]
       (cas/close! c))
     (alter-atomic me

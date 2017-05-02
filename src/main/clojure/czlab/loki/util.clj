@@ -13,17 +13,17 @@
 
   (:require [czlab.basal.logging :as log])
 
-  (:use [czlab.basal.core]
+  (:use [czlab.convoy.core]
+        [czlab.basal.core]
         [czlab.basal.str])
 
   (:import [clojure.lang APersistentVector]
-           [io.netty.util AttributeKey]
            [java.lang Math]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defonce ^AttributeKey RMSN (AttributeKey/newInstance "room+session"))
+(def RMSN :room-and-session)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

@@ -13,7 +13,8 @@
 
   (:require [czlab.basal.logging :as log])
 
-  (:use [czlab.basal.core]
+  (:use [czlab.convoy.core]
+        [czlab.basal.core]
         [czlab.basal.str]
         [czlab.basal.io]
         [czlab.loki.util]
