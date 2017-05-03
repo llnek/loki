@@ -171,7 +171,7 @@
 
   (let [p (partial removeGameRoom (id?? game))
         room (arena<> game p source)]
-    (log/debug "created a new room(F): %s" room)
+    (log/debug "created a new room(F): %s" (id?? room))
     room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -226,7 +226,7 @@
            evt (privateEvent<> ::loki/playreq-ok src)]
           (.open ^Openable pss arg)
           (set-socket-attr ch RMSN {:room room :session pss})
-          (log/debug "replying msg to user: %s" evt)
+          (log/debug "replying msg to user: %s" (prettyEvent evt))
           (replyEvent ch evt)
           (bcast! room
                   ::loki/player-joined
@@ -264,7 +264,7 @@
           (. ^Openable pss open arg)
           (set-socket-attr ch RMSN {:room room :session pss})
           (replyEvent ch evt)
-          (log/debug "replying back to user: %s" evt)
+          (log/debug "replying back to user: %s" (prettyEvent evt))
           (if (can-open-room? room)
             (do
               (log/debug "room has enough players, can open")

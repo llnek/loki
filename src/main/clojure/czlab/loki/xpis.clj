@@ -91,7 +91,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defprotocol GameLogic ;;extends Initable, Startable, Restartable {
+(defprotocol GameImpl ;;extends Initable, Startable, Restartable {
   ""
   (get-player-gist [_ id] "")
   (start-round [_ arg] "")

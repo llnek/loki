@@ -41,7 +41,7 @@
   (receive [me evt]
     (when (= (:type me)
              (:type evt))
-      (log/debug "[%s]: recv'ed msg: %s" me evt)
+      (log/debug "[%s]: recv'ed msg: %s" (id?? me) (prettyEvent evt))
       (.send ^Sendable
              (:session me) evt))))
 

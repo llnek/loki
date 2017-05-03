@@ -62,7 +62,7 @@
     (let [{:keys [disp conns source game]} @me
           sss (sort-by #(:created (deref %)) (vals conns))
           g (@(:implClass game) me sss)]
-      (log/debug "activating room [%s]" me)
+      (log/debug "activating room [%s]" (id?? me))
       (doseq [s sss] (subsc disp (esubr<> s)))
       (copy* me
              {:impl g
@@ -72,21 +72,21 @@
       (.init ^Initable g nil)
       (bcast! me ::loki/start (fmtStartBody g sss))))
   (close [me]
-    (log/debug "closing arena [%s]" me)
+    (log/debug "closing arena [%s]" (id?? me))
     (doseq [[_ s] (:conns @me)]
       (doto s removeSession closeQ))
     (setf! me :conns nil)
     ((:finz @me) (id?? me)))
   Restartable
   (restart [me _]
-    (log/debug "arena#restart() called")
+    (log/debug "arena [%s] restart() called" (id?? me))
     (->> (-> (:impl @me)
              (fmtStartBody (vals (:conns @me))))
          (bcast! me ::loki/restart)))
   (restart [me] (.restart me nil))
   Startable
   (start [me arg]
-    (log/debug "arena#start called")
+    (log/debug "arena [%s] start called" (id?? me))
     (setf! me :active? true)
     (.start ^Startable (:impl @me) arg))
   (start [me] (.start me nil))
@@ -115,7 +115,7 @@
         (and (not active?) (isCode? ::loki/started evt))
         (if (in? latch (id?? context))
           (locking me
-            (log/debug "latch: drop-off: %s" context)
+            (log/debug "latch: drop-off: %s" (id?? context))
             (setf! me
                    :latch
                    (dissoc (:latch @me)
@@ -141,7 +141,7 @@
   Receivable
   (receive [me evt]
     (when (:opened? @me)
-      (log/debug "room recv'ed msg %s" evt)
+      (log/debug "room recv'ed msg %s" (prettyEvent evt))
       (cond
         (isPublic? evt) (broad-cast me evt)
         (isPrivate? evt) (on-room-event me evt)))))

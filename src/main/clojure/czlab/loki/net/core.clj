@@ -40,7 +40,8 @@
         m {:type (get-enum-str loki-msg-types type)
            :code (get-enum-str loki-msg-codes code)
            :status (get-enum-str loki-status-codes status)}]
-    (writeJsonStr (merge evt m))))
+    (prn-str (dissoc (merge evt m)
+                          :context :socket :session :source))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -78,9 +79,9 @@
                   (lookup-enum-int loki-msg-codes code))]
        (cond
          (not t)
-         (trap! DataError (format "Event type info: %d" t))
+         (trap! DataError (format "Event type info: %s" t))
          (not c)
-         (trap! DataError (format "Event code info: %d" c))
+         (trap! DataError (format "Event code info: %s" c))
          :else
          (merge evt
                 {:type t :code c} extras))))))

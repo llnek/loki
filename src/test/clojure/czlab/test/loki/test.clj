@@ -57,7 +57,7 @@
 ;;
 (defn- mockDelegate "" []
   (reify
-    GameLogic
+    GameImpl
     (get-player-gist[_ _])
     (on-game-event [_ _])
     (start-round [_ _])
