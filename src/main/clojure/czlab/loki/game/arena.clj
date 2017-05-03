@@ -54,6 +54,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (decl-mutable GameArena
+  Idable
+  (id [me] (:id @me))
   Openable
   (open [me] (.open me nil))
   (open [me _]

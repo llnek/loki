@@ -50,6 +50,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+(defn- mockSocket "" []
+  (new<> "io.netty.channel.embedded.EmbeddedChannel"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 (defn- mockDelegate "" []
   (reify
     GameLogic
@@ -149,6 +154,7 @@
 ;;
 (deftest czlabtestloki-test
 
+  (require 'czlab.nettio.core)
   (is (do->true
         (initGameRegistry! games-meta)))
 
@@ -217,12 +223,13 @@
 
   (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
-                          :socket (new<> "io.netty.channel.embedded.EmbeddedChannel")
+                          :socket (mockSocket)
                           :body {:gameid gid
                                  :settings {:a 1}
                                  :principal  "u1"
                                  :credential "p1"}}) ;user#3
             t (doPlayReq {:source (mockPluglet)
+                          :socket (mockSocket)
                           :body {:gameid gid
                                  :settings {:b 2}
                                  :principal  "u2" ;user#4
@@ -247,7 +254,7 @@
 
   (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
-                          :socket (new<> "io.netty.channel.embedded.EmbeddedChannel")
+                          :socket (mockSocket)
                           :body {:gameid gid
                                  :principal  "u3"
                                  :credential "p3"}}) ;user#5
@@ -264,7 +271,7 @@
 
   (is (let [gid "game-1"
             s (doPlayReq {:source (mockPluglet)
-                          :socket (new<> "io.netty.channel.embedded.EmbeddedChannel")
+                          :socket (mockSocket)
                           :body {:gameid gid
                                  :principal  "u4"
                                  :credential "p4"}})
@@ -275,6 +282,7 @@
                               (:roomid (some-> s deref)))
             na (not (can-open-room? r))
             t (doJoinReq {:source (mockPluglet)
+                          :socket (mockSocket)
                           :body {:roomid (sname (some-> r id??))
                                  :gameid gid
                                  :principal  "u5"
