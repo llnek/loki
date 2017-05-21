@@ -11,19 +11,18 @@
 
   czlab.loki.game.reqs
 
-  (:require [czlab.loki.xpis :as loki :refer :all]
-            [czlab.basal.resources :refer [rstr]]
-            [czlab.basal.logging :as log])
-
-  (:use [czlab.basal.format]
-        [czlab.basal.core]
-        [czlab.basal.str]
-        [czlab.basal.io]
-        [czlab.wabbit.xpis]
-        [czlab.loki.player]
-        [czlab.loki.net.core]
-        [czlab.loki.game.room]
-        [czlab.loki.game.core])
+  (:require [czlab.basal.resources :as r :refer [rstr]]
+            [czlab.loki.xpis :as loki]
+            [czlab.basal.log :as log]
+            [czlab.basal.format :as f]
+            [czlab.basal.core :as c]
+            [czlab.basal.str :as s]
+            [czlab.basal.io :as i]
+            [czlab.wabbit.xpis :as xp]
+            [czlab.loki.player :as p]
+            [czlab.loki.net.core :as nc]
+            [czlab.loki.game.room :as gr]
+            [czlab.loki.game.core :as gc])
 
   (:import [czlab.jasal I18N]))
 
@@ -39,38 +38,38 @@
   (let [{:keys [gameid principal credential]}
         body
         rcb (some-> source
-                    get-server id?? I18N/bundle)]
-    (if (hgl? (sname gameid))
+                    xp/get-server c/id?? I18N/bundle)]
+    (if (s/hgl? (s/sname gameid))
       (let
         [gameid (keyword gameid)
-         g (lookupGame gameid)
+         g (gc/lookupGame gameid)
          p (if (some? g)
-             (lookupPlayer principal
-                           (charsit credential)))
+             (p/lookupPlayer principal
+                             (c/charsit credential)))
          s (if (and (some? g)
-                    (some? p)) (openRoom g p evt))]
+                    (some? p)) (gr/openRoom g p evt))]
         (log/debug "game[%s] loaded as: %s" gameid g)
         (cond
           (nil? g)
-          (do->nil
-            (replyError socket
-                        ::loki/game-nok
-                        (rstr rcb "game.notok")))
+          (c/do->nil
+            (nc/replyError socket
+                           ::loki/game-nok
+                           (r/rstr rcb "game.notok")))
           (nil? p)
-          (do->nil
-            (replyError socket
-                        ::loki/user-nok
-                        (rstr rcb "login.error")))
+          (c/do->nil
+            (nc/replyError socket
+                           ::loki/user-nok
+                           (r/rstr rcb "login.error")))
           (nil? s)
-          (do->nil
-            (replyError socket
-                        ::loki/rooms-full
-                        (rstr rcb "room.none")))
+          (c/do->nil
+            (nc/replyError socket
+                           ::loki/rooms-full
+                           (r/rstr rcb "room.none")))
           :else s))
-      (do->nil
-        (replyError socket
-                    ::loki/playreq-nok
-                    (rstr rcb "bad.req"))))))
+      (c/do->nil
+        (nc/replyError socket
+                       ::loki/playreq-nok
+                       (r/rstr rcb "bad.req"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Request to join a specific game room.  Not used now.
@@ -83,31 +82,31 @@
   (let [{:keys [gameid roomid principal credential]}
         body
         rcb (some-> source
-                    get-server id?? I18N/bundle)]
-    (if (and (hgl? (sname gameid))
-             (hgl? (sname roomid)))
+                    xp/get-server c/id?? I18N/bundle)]
+    (if (and (s/hgl? (s/sname gameid))
+             (s/hgl? (s/sname roomid)))
       (let
-        [p (lookupPlayer principal credential)
+        [p (p/lookupPlayer principal credential)
          gameid (keyword gameid)
          roomid (keyword roomid)
          pss (some-> p
-                     (joinRoom  gameid roomid evt))]
+                     (gr/joinRoom  gameid roomid evt))]
         (cond
           (nil? p)
-          (do->nil
-            (replyError socket
-                        ::loki/user-nok
-                        (rstr rcb "login.error")))
+          (c/do->nil
+            (nc/replyError socket
+                           ::loki/user-nok
+                           (r/rstr rcb "login.error")))
           (nil? pss)
-          (do->nil
-            (replyError socket
-                        ::loki/room-nok
-                        (rstr rcb "room.bad")))
+          (c/do->nil
+            (nc/replyError socket
+                           ::loki/room-nok
+                           (r/rstr rcb "room.bad")))
           :else pss))
-      (do->nil
-        (replyError socket
-                    ::loki/joinreq-nok
-                    (rstr rcb "bad.req"))))))
+      (c/do->nil
+        (nc/replyError socket
+                       ::loki/joinreq-nok
+                       (r/rstr rcb "bad.req"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

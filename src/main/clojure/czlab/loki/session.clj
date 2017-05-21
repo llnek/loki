@@ -11,14 +11,13 @@
 
   czlab.loki.session
 
-  (:require [czlab.basal.logging :as log])
-
-  (:use [czlab.convoy.core]
-        [czlab.basal.core]
-        [czlab.basal.str]
-        [czlab.basal.io]
-        [czlab.loki.util]
-        [czlab.loki.net.core])
+  (:require [czlab.basal.log :as log]
+            [czlab.convoy.core :as cc]
+            [czlab.basal.core :as c]
+            [czlab.basal.str :as s]
+            [czlab.basal.io :as i]
+            [czlab.loki.util :as u]
+            [czlab.loki.net.core :as nc])
 
   (:import [czlab.jasal Openable Sendable Idable]))
 
@@ -29,17 +28,17 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(decl-mutable GameSession
+(c/decl-mutable GameSession
   Openable
   (open [me options]
-    (copy* me
-           (merge {:status true}
-                  (select-keys options
-                               [:source :socket]))))
+    (c/copy* me
+             (merge {:status true}
+                    (select-keys options
+                                 [:source :socket]))))
   (close [me]
-    (closeQ (:socket @me))
-    (copy* me
-           {:status false :socket nil}))
+    (i/closeQ (:socket @me))
+    (c/copy* me
+             {:status false :socket nil}))
   Idable
   (id [me] (:id @me))
   Sendable
@@ -48,28 +47,26 @@
       (if (and status
                (not shutting?))
         (some-> socket
-                (send-ws-string (encodeEvent msg)))))))
+                (cc/send-ws-string (nc/encodeEvent msg)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn session<> "" [room player settings]
-  (let [sid (toKW "sess#" (seqint2))
-        pid (id?? player)
-        s (mutable<> GameSession
-                     (merge settings
-                            {:roomid (id?? room)
-                             :shutting? false
-                             :created (now<>)
-                             :status false
-                             :source nil
-                             :socket nil
-                             :id sid
-                             :player player}))]
-    (doto->> s
-             (swap! sessions-db
-                    update-in
-                    [pid]
-                    assoc (id?? s) ))))
+  (let [sid (s/toKW "sess#" (c/seqint2))
+        pid (c/id?? player)
+        s (c/mutable<> GameSession
+                       (merge settings
+                              {:roomid (c/id?? room)
+                               :shutting? false
+                               :created (c/now<>)
+                               :status false
+                               :source nil
+                               :socket nil
+                               :id sid
+                               :player player}))]
+    (c/doto->> s
+               (swap! sessions-db
+                      update-in [pid] assoc (c/id?? s)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -79,7 +76,7 @@
 ;;
 (defn countSessions "" [player]
   (if player
-    (count (@sessions-db (id?? player))) 0))
+    (count (@sessions-db (c/id?? player))) 0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -87,13 +84,13 @@
   ""
   [session]
   {:pre [(some? session)]}
-  (if-some [p (:player @session)]
-    (swap! sessions-db
-           update-in
-           [(id?? p)]
-           dissoc
-           (id?? session)))
-  nil)
+  (c/do->nil
+    (if-some [p (:player @session)]
+      (swap! sessions-db
+             update-in
+             [(c/id?? p)]
+             dissoc
+             (c/id?? session)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -104,8 +101,8 @@
   (if-some [p (:player @session)]
     (swap! sessions-db
            update-in
-           [(id?? p)]
-           assoc (id?? session) session))
+           [(c/id?? p)]
+           assoc (c/id?? session) session))
   session)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -114,11 +111,11 @@
   ""
   [player]
   {:pre [(some? player)]}
-  (if-some [pid (id?? player)]
-    (let [m (@sessions-db pid)]
-      (swap! sessions-db dissoc pid)
-      (doseq [[_ c] m] (closeQ c))))
-  nil)
+  (c/do->nil
+    (if-some [pid (c/id?? player)]
+      (let [m (@sessions-db pid)]
+        (swap! sessions-db dissoc pid)
+        (doseq [[_ c] m] (i/closeQ c))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

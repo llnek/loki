@@ -11,11 +11,10 @@
 
   czlab.loki.game.core
 
-  (:require [czlab.basal.logging :as log]
-            [clojure.java.io :as io])
-
-  (:use [czlab.basal.core]
-        [czlab.basal.str])
+  (:require [czlab.basal.log :as log]
+            [clojure.java.io :as io]
+            [czlab.basal.core :as c]
+            [czlab.basal.str :as s])
 
   (:import [czlab.jasal Idable]
            [czlab.basal Cljrt]
@@ -30,27 +29,29 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(decl-object GameInfo)
+(c/decl-object GameInfo)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defmacro game<> "" [seed] `(object<> GameInfo ~seed))
+(defmacro game<>
+  "" [seed]
+  `(czlab.basal.core/object<> czlab.loki.game.core.GameInfo ~seed))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- loadGames "" [_ games]
-  (preduce<map>
+  (c/preduce<map>
     #(let [[k g] %2
            gameid (keyword k)
            {:keys [enabled? minp maxp impl]
             :or {minp 1 maxp 1 impl ""}}
            (:network g)
-           ok (!false? enabled?)
-           impl (strKW impl)
+           ok (c/!false? enabled?)
+           impl (s/strKW impl)
            m
            (game<>
-             {:maxPlayers (if (spos? maxp) maxp minp)
-              :minPlayers (if (spos? minp) minp 1)
+             {:maxPlayers (if (c/spos? maxp) maxp minp)
+              :minPlayers (if (c/spos? minp) minp 1)
               :supportNetwork ok
               :name (:name g)
               :implClass (with-open

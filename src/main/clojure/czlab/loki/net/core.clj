@@ -11,13 +11,12 @@
 
   czlab.loki.net.core
 
-  (:require [czlab.loki.xpis :as loki :refer :all]
-            [czlab.basal.logging :as log])
-
-  (:use [czlab.basal.format]
-        [czlab.convoy.core]
-        [czlab.basal.core]
-        [czlab.basal.str])
+  (:require [czlab.loki.xpis :as loki]
+            [czlab.basal.log :as log]
+            [czlab.basal.core :as c]
+            [czlab.basal.str :as s]
+            [czlab.basal.format :as f]
+            [czlab.convoy.core :as cc])
 
   (:import [clojure.lang APersistentMap]
            [czlab.jasal DataError Sendable]))
@@ -25,8 +24,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defmacro isPrivate? "" [evt] `(= ::loki/private (:type ~evt)))
-(defmacro isPublic? "" [evt] `(= ::loki/public (:type ~evt)))
+(defmacro isPrivate? "" [evt] `(= :czlab.loki.xpis/private (:type ~evt)))
+(defmacro isPublic? "" [evt] `(= :czlab.loki.xpis/public (:type ~evt)))
 (defmacro isCode? "" [c evt] `(= ~c (:code ~evt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37,11 +36,11 @@
 
   (let [{:keys [type code status]}
         evt
-        m {:type (get-enum-str loki-msg-types type)
-           :code (get-enum-str loki-msg-codes code)
-           :status (get-enum-str loki-status-codes status)}]
+        m {:type (c/get-enum-str loki/loki-msg-types type)
+           :code (c/get-enum-str loki/loki-msg-codes code)
+           :status (c/get-enum-str loki/loki-status-codes status)}]
     (prn-str (dissoc (merge evt m)
-                          :context :socket :session :source))))
+                     :context :socket :session :source))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -51,15 +50,15 @@
   [{:keys [timestamp status
            type code body] :as evt}]
   {:pre [(some? type)(some? code)]}
-  (let [msg {:type (get loki-msg-types type)
-             :code (get loki-msg-codes code)
+  (let [msg {:type (get loki/loki-msg-types type)
+             :code (get loki/loki-msg-codes code)
              :body (or body {})
-             :timestamp (or timestamp (now<>))}]
+             :timestamp (or timestamp (c/now<>))}]
     (-> (if status
           (assoc msg
                  :status
-                 (get loki-status-codes status)) msg)
-        writeJsonStr)))
+                 (get loki/loki-status-codes status)) msg)
+        f/writeJsonStr)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -70,18 +69,18 @@
   ([data] (decodeEvent data nil))
   ([data extras]
    (log/debug "decoding json: %s" data)
-   (try!
+   (c/try!
      (let [{:keys [type code] :as evt}
-           (readJsonStrKW data)
+           (f/readJsonStrKW data)
            t (and (number? type)
-                  (lookup-enum-int loki-msg-types type))
+                  (c/lookup-enum-int loki/loki-msg-types type))
            c (and (number? code)
-                  (lookup-enum-int loki-msg-codes code))]
+                  (c/lookup-enum-int loki/loki-msg-codes code))]
        (cond
          (not t)
-         (trap! DataError (format "Event type info: %s" t))
+         (c/throwBadData "Event type info: %s" t)
          (not c)
-         (trap! DataError (format "Event code info: %s" c))
+         (c/throwBadData "Event code info: %s" c)
          :else
          (merge evt
                 {:type t :code c} extras))))))
@@ -96,7 +95,7 @@
           (some? ecode)]}
    (let [body (if (string? body) {:message body} body)
          obj {:status ::loki/error
-              :timestamp (now<>)
+              :timestamp (c/now<>)
               :type etype
               :code ecode
               :body (or body {})}]
@@ -124,7 +123,7 @@
           (or (nil? body)
               (map? body))]}
    (let [obj {:status ::loki/ok
-              :timestamp (now<>)
+              :timestamp (c/now<>)
               :type etype
               :code ecode
               :body (or body {})}]
@@ -162,11 +161,11 @@
 
   (log/debug (str "reply back a msg "
                   "type: %s, code: %s")
-             (get-enum-str loki-msg-types (:type msg))
-             (get-enum-str loki-msg-codes (:code msg)))
-  (do->nil
+             (c/get-enum-str loki/loki-msg-types (:type msg))
+             (c/get-enum-str loki/loki-msg-codes (:code msg)))
+  (c/do->nil
     (some-> ch
-            (send-ws-string (encodeEvent msg)))))
+            (cc/send-ws-string (encodeEvent msg)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -222,7 +221,7 @@
 (defn bcast! ""
   ([room code body] (bcast! room code body nil))
   ([room code body arg]
-   (broad-cast room (publicEvent<> code body arg))))
+   (loki/broad-cast room (publicEvent<> code body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

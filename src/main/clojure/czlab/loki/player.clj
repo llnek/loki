@@ -11,12 +11,11 @@
 
   czlab.loki.player
 
-  (:require [czlab.basal.logging :as log])
-
-  (:use [czlab.basal.core]
-        [czlab.basal.io]
-        [czlab.basal.str]
-        [czlab.loki.session])
+  (:require [czlab.basal.log :as log]
+            [czlab.basal.core :as c]
+            [czlab.basal.io :as i]
+            [czlab.basal.str :as s]
+            [czlab.loki.session :as ss])
 
   (:import [czlab.jasal Idable]))
 
@@ -33,26 +32,26 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(decl-object LokiPlayer)
+(c/decl-object LokiPlayer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- player<> "" [userid passwd]
-  (object<> LokiPlayer
-            {:userid userid
-             :passwd passwd
-             :id (toKW "player#" (seqint2)) }))
+  (c/object<> LokiPlayer
+              {:userid userid
+               :passwd passwd
+               :id (s/toKW "player#" (c/seqint2))}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn- createPlayer
   ""
   [^String userid ^chars passwd]
-  {:pre [(hgl? userid)]}
+  {:pre [(s/hgl? userid)]}
   (locking userid-db
-    (if (notin? @userid-db userid)
+    (if (c/notin? @userid-db userid)
       (let [p (player<> userid passwd)
-            pid (id?? p)]
+            pid (c/id?? p)]
         (swap! player-db assoc pid p)
         (swap! userid-db assoc userid pid))))
   (@player-db (@userid-db userid)))
@@ -74,7 +73,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 (defn logout "" [player]
-  (removeSessions player)
+  (ss/removeSessions player)
   (removePlayer (:userid player)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

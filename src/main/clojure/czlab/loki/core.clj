@@ -11,19 +11,17 @@
 
   czlab.loki.core
 
-  (:require [czlab.loki.xpis :as loki :refer :all]
-            [czlab.basal.logging :as log]
-            [clojure.java.io :as io])
-
-  (:use [czlab.basal.format]
-        [czlab.basal.core]
-        [czlab.basal.io]
-        [czlab.basal.str]
-        [czlab.loki.util]
-        [czlab.convoy.core]
-        [czlab.wabbit.xpis]
-        [czlab.loki.net.core]
-        [czlab.loki.game.reqs])
+  (:require [czlab.loki.xpis :as loki]
+            [czlab.basal.log :as log]
+            [clojure.java.io :as io]
+            [czlab.basal.core :as c]
+            [czlab.basal.io :as i]
+            [czlab.basal.str :as s]
+            [czlab.loki.util :as u]
+            [czlab.convoy.core :as cc]
+            [czlab.wabbit.xpis :as xp]
+            [czlab.loki.net.core :as nc]
+            [czlab.loki.game.reqs :as rs])
 
   (:import [java.io File]
            [czlab.jasal XData Receivable]))
@@ -35,23 +33,23 @@
 ;;
 (defn lokiHandler "" [evt]
   (let [s (.strit ^XData (:body evt))
-        p (get-pluglet evt)
+        p (xp/get-pluglet evt)
         ch (:socket evt)
         {:keys [type code] :as req}
-        (decodeEvent s {:socket ch
-                        :source p})]
+        (nc/decodeEvent s {:socket ch
+                           :source p})]
     (cond
-      (and (isPrivate? req)
-           (isCode? ::loki/playgame-req req))
-      (doPlayReq req)
+      (and (nc/isPrivate? req)
+           (nc/isCode? ::loki/playgame-req req))
+      (rs/doPlayReq req)
 
-      (and (isPrivate? req)
-           (isCode? ::loki/joingame-req req))
-      (doJoinReq req)
+      (and (nc/isPrivate? req)
+           (nc/isCode? ::loki/joingame-req req))
+      (rs/doJoinReq req)
 
       :else
       (let [{:keys [room session]}
-            (get-socket-attr ch RMSN)]
+            (cc/get-socket-attr ch u/RMSN)]
         (if (and session room)
           (->> (assoc req :context session )
                (.receive ^Receivable room))

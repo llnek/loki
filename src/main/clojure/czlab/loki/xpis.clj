@@ -11,71 +11,69 @@
 
   czlab.loki.xpis
 
-  (:require [czlab.basal.logging :as log])
-
-  (:use [czlab.basal.core]
-        [czlab.basal.str]))
+  (:require [czlab.basal.log :as log]
+            [czlab.basal.core :as c]
+            [czlab.basal.str :as s]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(decl-special-enum loki-msg-types
-
-                   protected 1
-                   public 2
-                   private 3)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(decl-special-enum loki-status-codes
-
-                   ok 200
-                   error 500)
+(c/decl-special-enum loki-msg-types
+                     protected 1
+                     public 2
+                     private 3)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(decl-special-enum loki-msg-codes
+(c/decl-special-enum loki-status-codes
+                     ok 200
+                     error 500)
 
-                   playgame-req 600
-                   playreq-ok 601
-                   playreq-nok 602
-                   joingame-req 651
-                   joinreq-ok 652
-                   joinreq-nok 653
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+(c/decl-special-enum loki-msg-codes
 
-                   user-nok 700
-                   game-nok 701
-                   room-nok 702
-                   room-filled 703
-                   rooms-full 704
+                     playgame-req 600
+                     playreq-ok 601
+                     playreq-nok 602
+                     joingame-req 651
+                     joinreq-ok 652
+                     joinreq-nok 653
 
-                   player-joined 800
-                   await-start 801
+                     user-nok 700
+                     game-nok 701
+                     room-nok 702
+                     room-filled 703
+                     rooms-full 704
 
-                   connected 820
-                   started 821
-                   closed 822
-                   tear-down 823
+                     player-joined 800
+                     await-start 801
 
-                   restart 840
-                   start 841
-                   stop 842
-                   start-round 843
-                   end-round 844
+                     connected 820
+                     started 821
+                     closed 822
+                     tear-down 823
 
-                   poke-rumble 860
-                   poke-move 861
-                   poke-wait 862
-                   sync-arena 863
+                     restart 840
+                     start 841
+                     stop 842
+                     start-round 843
+                     end-round 844
 
-                   replay 880
-                   play-move 881
-                   play-scrubbed 882
+                     poke-rumble 860
+                     poke-move 861
+                     poke-wait 862
+                     sync-arena 863
 
-                   game-won 890
-                   game-tie 891
+                     replay 880
+                     play-move 881
+                     play-scrubbed 882
 
-                   quit 911)
+                     game-won 890
+                     game-tie 891
+
+                     quit 911)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

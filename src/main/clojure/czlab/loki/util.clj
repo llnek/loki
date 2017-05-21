@@ -11,11 +11,10 @@
 
   czlab.loki.util
 
-  (:require [czlab.basal.logging :as log])
-
-  (:use [czlab.convoy.core]
-        [czlab.basal.core]
-        [czlab.basal.str])
+  (:require [czlab.basal.log :as log]
+            [czlab.basal.core :as c]
+            [czlab.basal.str :as s]
+            [czlab.convoy.core :as cc])
 
   (:import [clojure.lang APersistentVector]
            [java.lang Math]))
