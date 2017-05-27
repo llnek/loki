@@ -5,7 +5,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
-  :description ""
+  :description "Network game server framework"
   :url "https://github.com/llnek/loki"
 
   :dependencies [[org.clojure/core.async "0.3.442"]
@@ -14,15 +14,11 @@
 
   :plugins [[cider/cider-nrepl "0.14.0"]
             [lein-cprint "1.2.0"]
-            [lein-javadoc "0.3.0"]
             [lein-codox "0.10.3"]]
 
   :profiles {:provided {:dependencies
                         [[org.clojure/clojure "1.8.0" :scope "provided"]]}
              :uberjar {:aot :all}}
-
-  :javadoc-opts {:package-names ["czlab.loki"]
-                 :output-dir "docs"}
 
   :global-vars {*warn-on-reflection* true}
   :target-path "out/%s"

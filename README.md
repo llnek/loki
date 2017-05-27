@@ -17,7 +17,6 @@ Add the following dependency to your `project.clj` file:
 ## Usage
 
 
-
 ## Contacting me / contributions
 
 Please use the project's [GitHub issues page] for all questions, ideas, etc. **Pull requests welcome**. See the project's [GitHub contributors page] for a list of contributors.
