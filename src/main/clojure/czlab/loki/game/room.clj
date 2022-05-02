@@ -21,7 +21,7 @@
             [czlab.basal.core :as c]
             [czlab.basal.util :as bu]
             [czlab.loki.util :as u]
-            [czlab.nettio.core :as cc]
+            [czlab.niou.core :as cc]
             [czlab.loki.session :as ss]
             [czlab.loki.net.core :as nc]
             [czlab.loki.game.arena :as ga])
@@ -248,7 +248,7 @@
                 :pnum (:number @pss)}
            evt (nc/private-event<> loki/playreq-ok src)]
           (c/open pss arg)
-          (cc/set-akey* ch [u/RMSN {:room room :session pss}])
+          (cc/setattr ch u/RMSN {:room room :session pss})
           (c/debug "replying msg to user: %s" (nc/pretty-event evt))
           (nc/reply-event ch evt)
           (nc/bcast! room
@@ -287,7 +287,7 @@
                    :pnum (:number @pss)}
               evt (nc/private-event<> loki/joinreq-ok src)]
           (c/open pss arg)
-          (cc/set-akey* ch [u/RMSN {:room room :session pss}])
+          (cc/setattr ch u/RMSN {:room room :session pss})
           (nc/reply-event ch evt)
           (c/debug "replying back to user: %s" (nc/pretty-event evt))
           (if (loki/can-open-room? room)

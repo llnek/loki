@@ -21,7 +21,7 @@
             [clojure.java.io :as io]
             [czlab.basal.core :as c]
             [czlab.basal.io :as i]
-            [czlab.nettio.core :as cc]
+            [czlab.niou.core :as cc]
             [czlab.loki.util :as u]
             [czlab.loki.net.core :as nc]
             [czlab.loki.game.reqs :as rs])
@@ -55,7 +55,7 @@
 
       :t
       (let [{:keys [room session]}
-            (cc/akey?? ch (cc/akey* u/RMSN))]
+            (cc/getattr ch u/RMSN)]
         (if-not (and session room)
           (c/error "no session attached to socket")
           (->> (assoc req :context session) (c/receive room)))))))
