@@ -1,10 +1,16 @@
-;; Copyright (c) 2013-2017, Kenneth Leung. All rights reserved.
-;; The use and distribution terms for this software are covered by the
-;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;; which can be found in the file epl-v10.html at the root of this distribution.
-;; By using this software in any fashion, you are agreeing to be bound by
-;; the terms of this license.
-;; You must not remove this notice, or any other, from this software.
+;; Licensed under the Apache License, Version 2.0 (the "License");
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
+;;
+;; Copyright © 2013-2022, Kenneth Leung. All rights reserved.
 
 (ns ^{:doc ""
       :author "Kenneth Leung"}
@@ -12,48 +18,47 @@
   czlab.loki.core
 
   (:require [czlab.loki.xpis :as loki]
-            [czlab.basal.log :as log]
             [clojure.java.io :as io]
             [czlab.basal.core :as c]
             [czlab.basal.io :as i]
-            [czlab.basal.str :as s]
+            [czlab.nettio.core :as cc]
             [czlab.loki.util :as u]
-            [czlab.convoy.core :as cc]
-            [czlab.wabbit.xpis :as xp]
             [czlab.loki.net.core :as nc]
             [czlab.loki.game.reqs :as rs])
 
   (:import [java.io File]
-           [czlab.jasal XData Receivable]))
+           [czlab.basal XData]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn lokiHandler "" [evt]
+(defn lokiHandler
+
+  ""
+  [evt]
+
   (let [s (.strit ^XData (:body evt))
-        p (xp/get-pluglet evt)
+        p (:source evt)
         ch (:socket evt)
         {:keys [type code] :as req}
-        (nc/decodeEvent s {:socket ch
-                           :source p})]
+        (nc/decode-event s {:socket ch
+                            :source p})]
     (cond
-      (and (nc/isPrivate? req)
-           (nc/isCode? ::loki/playgame-req req))
-      (rs/doPlayReq req)
+      (and (nc/is-private? req)
+           (nc/is-code? loki/playgame-req req))
+      (rs/do-playreq req)
 
-      (and (nc/isPrivate? req)
-           (nc/isCode? ::loki/joingame-req req))
-      (rs/doJoinReq req)
+      (and (nc/is-private? req)
+           (nc/is-code? loki/joingame-req req))
+      (rs/do-joinreq req)
 
-      :else
+      :t
       (let [{:keys [room session]}
-            (cc/get-socket-attr ch u/RMSN)]
-        (if (and session room)
-          (->> (assoc req :context session )
-               (.receive ^Receivable room))
-          (log/error "no session attached to socket"))))))
+            (cc/akey?? ch (cc/akey* u/RMSN))]
+        (if-not (and session room)
+          (c/error "no session attached to socket")
+          (->> (assoc req :context session) (c/receive room)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

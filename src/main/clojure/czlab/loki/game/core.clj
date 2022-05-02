@@ -1,45 +1,51 @@
-;; Copyright (c) 2013-2017, Kenneth Leung. All rights reserved.
-;; The use and distribution terms for this software are covered by the
-;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;; which can be found in the file epl-v10.html at the root of this distribution.
-;; By using this software in any fashion, you are agreeing to be bound by
-;; the terms of this license.
-;; You must not remove this notice, or any other, from this software.
+;; Licensed under the Apache License, Version 2.0 (the "License");
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
+;;
+;; Copyright © 2013-2022, Kenneth Leung. All rights reserved.
 
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
   czlab.loki.game.core
 
-  (:require [czlab.basal.log :as log]
-            [clojure.java.io :as io]
-            [czlab.basal.core :as c]
-            [czlab.basal.str :as s])
+  (:require [clojure.java.io :as io]
+            [czlab.basal.util :as u]
+            [czlab.basal.core :as c])
 
-  (:import [czlab.jasal Idable]
-           [czlab.basal Cljrt]
-           [java.io File]))
+  (:import [java.io Closeable File]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (def ^:dynamic *game-rego* {})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(c/decl-object GameInfo)
+(c/decl-object<> GameInfo)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (defmacro game<>
-  "" [seed]
+
+  ""
+  [seed]
+
   `(czlab.basal.core/object<> czlab.loki.game.core.GameInfo ~seed))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn- loadGames "" [_ games]
+(defn- loadGames
+
+  ""
+  [_ games]
+
   (c/preduce<map>
     #(let [[k g] %2
            gameid (keyword k)
@@ -47,38 +53,37 @@
             :or {minp 1 maxp 1 impl ""}}
            (:network g)
            ok (c/!false? enabled?)
-           impl (s/strKW impl)
+           impl (c/x->kw impl)
            m
            (game<>
              {:maxPlayers (if (c/spos? maxp) maxp minp)
               :minPlayers (if (c/spos? minp) minp 1)
               :supportNetwork ok
               :name (:name g)
-              :implClass (with-open
-                           [clj (Cljrt/newrt)]
-                           (if ok (.varIt clj impl)))
+              :implClass (and ok (u/var* (u/cljrt<>) impl))
               :id gameid})]
        (assoc! %1 gameid m)) games))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (defn initGameRegistry!
+
   "Initialize the game registry"
   [games]
+
   {:pre [(map? games)]}
 
   (alter-var-root #'czlab.loki.game.core/*game-rego* loadGames games)
-  (log/info "games=\n%s" *game-rego*))
+  (c/info "games=\n%s" *game-rego*))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn lookupGame
+(defn lookup-game
+
   "Find game from registry"
   [gameid]
   {:pre [(some? gameid)]}
 
   (when-some [g (*game-rego* (keyword gameid))]
-    (log/debug "found game with id = %s" gameid)
+    (c/debug "found game with id = %s" gameid)
     g))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

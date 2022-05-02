@@ -2,22 +2,22 @@
 ;;
 (defproject io.czlab/loki "1.0.0"
 
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :license {:url "https://www.apache.org/licenses/LICENSE-2.0.txt"
+            :name "Apache License"}
 
   :description "Network game server framework"
   :url "https://github.com/llnek/loki"
 
-  :dependencies [[org.clojure/core.async "0.3.442"]
-                 [io.czlab/wabbit-plugs "1.0.0"]
-                 [io.czlab/wabbit "1.0.0"]]
+  :dependencies [[org.clojure/core.async "1.5.648"]
+                 [io.czlab/jasal "2.1.0"]
+                 [io.czlab/bixby "2.1.0"]]
 
-  :plugins [[cider/cider-nrepl "0.14.0"]
-            [lein-cprint "1.2.0"]
-            [lein-codox "0.10.3"]]
+  :plugins [[cider/cider-nrepl "0.28.3"]
+            [lein-codox "0.10.8"]
+            [lein-cljsbuild "1.1.8"]]
 
   :profiles {:provided {:dependencies
-                        [[org.clojure/clojure "1.8.0" :scope "provided"]]}
+                        [[org.clojure/clojure "1.11.1" :scope "provided"]]}
              :uberjar {:aot :all}}
 
   :global-vars {*warn-on-reflection* true}
@@ -32,7 +32,8 @@
   :test-paths ["src/test/clojure"]
 
   :jvm-opts ["-Dlog4j.configurationFile=file:attic/log4j2.xml"]
-  :javac-options ["-source" "8"
+  :javac-options ["-source" "16"
+                  "-target" "16"
                   "-Xlint:unchecked" "-Xlint:-options" "-Xlint:deprecation"])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

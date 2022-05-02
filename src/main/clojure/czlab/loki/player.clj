@@ -1,28 +1,29 @@
-;; Copyright (c) 2013-2017, Kenneth Leung. All rights reserved.
-;; The use and distribution terms for this software are covered by the
-;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;; which can be found in the file epl-v10.html at the root of this distribution.
-;; By using this software in any fashion, you are agreeing to be bound by
-;; the terms of this license.
-;; You must not remove this notice, or any other, from this software.
+;; Licensed under the Apache License, Version 2.0 (the "License");
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
+;;
+;; Copyright © 2013-2022, Kenneth Leung. All rights reserved.
 
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
   czlab.loki.player
 
-  (:require [czlab.basal.log :as log]
-            [czlab.basal.core :as c]
-            [czlab.basal.io :as i]
-            [czlab.basal.str :as s]
-            [czlab.loki.session :as ss])
-
-  (:import [czlab.jasal Idable]))
+  (:require [czlab.basal.core :as c]
+            [czlab.basal.util :as u]
+            [czlab.loki.session :as ss]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; player-db
 ;; {player-id -> {:p player :s {id -> session}}}
@@ -31,50 +32,63 @@
 (def ^:private userid-db (atom {}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(c/decl-object LokiPlayer)
+(c/decl-object<> LokiPlayer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn- player<> "" [userid passwd]
+(defn- player<>
+
+  ""
+  [userid passwd]
+
   (c/object<> LokiPlayer
               {:userid userid
                :passwd passwd
-               :id (s/toKW "player#" (c/seqint2))}))
+               :id (c/x->kw "player#" (u/seqint2))}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn- createPlayer
+(defn- create-player
+
   ""
   [^String userid ^chars passwd]
-  {:pre [(s/hgl? userid)]}
+
+  {:pre [(c/hgl? userid)]}
+
   (locking userid-db
-    (if (c/notin? @userid-db userid)
+    (if (c/!in? @userid-db userid)
       (let [p (player<> userid passwd)
-            pid (c/id?? p)]
+            pid (:id p)]
         (swap! player-db assoc pid p)
         (swap! userid-db assoc userid pid))))
   (@player-db (@userid-db userid)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn removePlayer "" [userid]
+(defn remove-player
+
+  ""
+  [userid]
+
   (locking userid-db
     (when-some [pid (@userid-db userid)]
       (swap! userid-db dissoc userid)
       (swap! player-db dissoc pid))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn lookupPlayer ""
-  ([userid pwd] (createPlayer userid pwd))
+(defn lookup-player
+
+  ""
+
+  ([userid pwd]
+   (create-player userid pwd))
   ([userid] (-> (@userid-db userid) (@player-db))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn logout "" [player]
-  (ss/removeSessions player)
-  (removePlayer (:userid player)))
+(defn logout
+
+  ""
+  [player]
+
+  (ss/remove-sessions player)
+  (remove-player (:userid player)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

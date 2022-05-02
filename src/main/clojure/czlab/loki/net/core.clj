@@ -1,10 +1,16 @@
-;; Copyright (c) 2013-2017, Kenneth Leung. All rights reserved.
-;; The use and distribution terms for this software are covered by the
-;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;; which can be found in the file epl-v10.html at the root of this distribution.
-;; By using this software in any fashion, you are agreeing to be bound by
-;; the terms of this license.
-;; You must not remove this notice, or any other, from this software.
+;; Licensed under the Apache License, Version 2.0 (the "License");
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
+;;
+;; Copyright © 2013-2022, Kenneth Leung. All rights reserved.
 
 (ns ^{:doc ""
       :author "Kenneth Leung"}
@@ -12,11 +18,19 @@
   czlab.loki.net.core
 
   (:require [czlab.loki.xpis :as loki]
-            [czlab.basal.log :as log]
+            [clojure.core.async
+             :as cas
+             :refer
+             [close!
+              go
+              chan
+              >!
+              <!
+              go-loop]]
             [czlab.basal.core :as c]
-            [czlab.basal.str :as s]
-            [czlab.basal.format :as f]
-            [czlab.convoy.core :as cc])
+            [czlab.basal.io :as i]
+            [czlab.niou.core :as nc]
+            [czlab.basal.util :as u])
 
   (:import [clojure.lang APersistentMap]
            [czlab.jasal DataError Sendable]))
@@ -24,78 +38,76 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
-(defmacro isPrivate? "" [evt] `(= :czlab.loki.xpis/private (:type ~evt)))
-(defmacro isPublic? "" [evt] `(= :czlab.loki.xpis/public (:type ~evt)))
-(defmacro isCode? "" [c evt] `(= ~c (:code ~evt)))
+(defmacro is-private? "" [evt] `(= czlab.loki.xpis/type-private (:type ~evt)))
+(defmacro is-public? "" [evt] `(= czlab.loki.xpis/type-public (:type ~evt)))
+(defmacro is-code? "" [c evt] `(= ~c (:code ~evt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn prettyEvent
+(defn pretty-event
+
   "Pretty print the event"
-  ^String [evt] {:pre [(map? evt)]}
+  ^String [evt]
+
+  {:pre [(map? evt)]}
 
   (let [{:keys [type code status]}
         evt
-        m {:type (c/get-enum-str loki/loki-msg-types type)
-           :code (c/get-enum-str loki/loki-msg-codes code)
-           :status (c/get-enum-str loki/loki-status-codes status)}]
+        m {:type (loki/msg-types type)
+           :code (loki/msg-codes code) }]
     (prn-str (dissoc (merge evt m)
                      :context :socket :session :source))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn encodeEvent
+(defn encode-event
+
   "Turn data into a json string"
   ^String
   [{:keys [timestamp status
            type code body] :as evt}]
-  {:pre [(some? type)(some? code)]}
-  (let [msg {:type (get loki/loki-msg-types type)
-             :code (get loki/loki-msg-codes code)
+
+  {:pre [(number? type)(number? code)]}
+
+  (let [msg {:type type
+             :code code
              :body (or body {})
-             :timestamp (or timestamp (c/now<>))}]
+             :timestamp (or timestamp (u/system-time))}]
     (-> (if status
-          (assoc msg
-                 :status
-                 (get loki/loki-status-codes status)) msg)
-        f/writeJsonStr)))
+          (assoc msg :status status) msg) i/fmt->json)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn decodeEvent
+(defn decode-event
+
   "Returns event with socket info attached.
   If error, catch and return it with an invalid type."
   {:tag APersistentMap}
-  ([data] (decodeEvent data nil))
+
+  ([data]
+   (decode-event data nil))
   ([data extras]
-   (log/debug "decoding json: %s" data)
+   (c/debug "decoding json: %s" data)
    (c/try!
-     (let [{:keys [type code] :as evt}
-           (f/readJsonStrKW data)
-           t (and (number? type)
-                  (c/lookup-enum-int loki/loki-msg-types type))
-           c (and (number? code)
-                  (c/lookup-enum-int loki/loki-msg-codes code))]
+     (let [{:keys [type code] :as evt} (i/read-json data)]
        (cond
-         (not t)
-         (c/throwBadData "Event type info: %s" t)
-         (not c)
-         (c/throwBadData "Event code info: %s" c)
-         :else
+         (not (number? type))
+         (u/throw-BadData "Event type info: %s" type)
+         (not (number? code))
+         (u/throw-BadData "Event code info: %s" code)
+         :t
          (merge evt
-                {:type t :code c} extras))))))
+                {:type type :code code} extras))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (defn errorObj<>
-  "" {:tag APersistentMap}
+
+  ""
+  {:tag APersistentMap}
 
   ([etype ecode body arg]
    {:pre [(some? etype)
           (some? ecode)]}
    (let [body (if (string? body) {:message body} body)
-         obj {:status ::loki/error
-              :timestamp (c/now<>)
+         obj {:status loki/status-error
+              :timestamp (u/system-time)
               :type etype
               :code ecode
               :body (or body {})}]
@@ -104,7 +116,7 @@
        (merge obj arg)
        (some? arg)
        (assoc obj :context arg)
-       :else obj)))
+       :t obj)))
 
   ([etype ecode body]
    (errorObj<> etype ecode body nil))
@@ -113,17 +125,18 @@
    (errorObj<> etype ecode nil nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (defn eventObj<>
-  "" {:tag APersistentMap}
+
+  ""
+  {:tag APersistentMap}
 
   ([etype ecode body arg]
    {:pre [(some? etype)
           (some? ecode)
           (or (nil? body)
               (map? body))]}
-   (let [obj {:status ::loki/ok
-              :timestamp (c/now<>)
+   (let [obj {:status loki/status-ok
+              :timestamp (u/system-time)
               :type etype
               :code ecode
               :body (or body {})}]
@@ -141,93 +154,125 @@
    (eventObj<> etype ecode nil nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn privateEvent<> ""
-  ([code body] (privateEvent<> code body nil))
+(defn private-event<> ""
+  ([code body]
+   (private-event<> code body nil))
   ([code body arg]
-   (eventObj<> ::loki/private code body arg)))
+   (eventObj<> loki/type-private code body arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn publicEvent<> ""
-  ([code body] (publicEvent<> code body nil))
+(defn public-event<> ""
+  ([code body]
+   (public-event<> code body nil))
   ([code body arg]
-   (eventObj<> ::loki/public code body arg)))
+   (eventObj<> loki/type-public code body arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn replyEvent
-  "Reply back a msg" [ch msg]
+(defn reply-event
 
-  (log/debug (str "reply back a msg "
-                  "type: %s, code: %s")
-             (c/get-enum-str loki/loki-msg-types (:type msg))
-             (c/get-enum-str loki/loki-msg-codes (:code msg)))
+  "Reply back a msg"
+  [ch msg]
+
+  (c/debug (str "reply back a msg "
+                "type: %s, code: %s")
+           (loki/msg-types (:type msg))
+           (loki/msg-codes (:code msg)))
   (c/do->nil
     (some-> ch
-            (cc/send-ws-string (encodeEvent msg)))))
+            (nc/reply-result (nc/ws-msg<> {:is-text? true
+                                           :socket ch
+                                           :body (encode-event msg)})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn replyError
+(defn reply-error
+
   "Reply back an error"
   [ch error msg]
 
-  (replyEvent ch (errorObj<> ::loki/private error msg)))
+  (reply-event ch (errorObj<> loki/type-private error msg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn isQuit? "" [evt]
-  (and (isPrivate? evt)
-       (isCode? ::loki/quit evt)))
+(defn is-quit?
+
+  ""
+  [evt]
+
+  (and (is-private? evt)
+       (is-code? loki/quit evt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn isMove? "" [evt]
-  (and (isPrivate? evt)
-       (isCode? ::loki/play-move evt)))
+(defn isMove?
+
+  ""
+  [evt]
+
+  (and (is-private? evt)
+       (is-code? loki/play-move evt)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn pokeWait! ""
-  ([room body] (pokeWait! room body nil))
+(defn pokeWait!
+
+  ""
+
+  ([room body]
+   (pokeWait! room body nil))
   ([room body arg]
-   (.send ^Sendable
-          room
-          (privateEvent<> ::loki/poke-wait body arg))))
+   (c/send room
+          (private-event<> loki/poke-wait body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn pokeMove! ""
-  ([room body] (pokeMove! room body nil))
+(defn pokeMove!
+
+  ""
+
+  ([room body]
+   (pokeMove! room body nil))
   ([room body arg]
-   (.send ^Sendable
-          room
-          (privateEvent<> ::loki/poke-move body arg))))
+   (c/send room
+           (private-event<> loki/poke-move body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn syncArena! ""
-  ([room body] (syncArena! room body nil))
+(defn syncArena!
+
+  ""
+
+  ([room body]
+   (syncArena! room body nil))
   ([room body arg]
    (->>
      (if arg
-       (privateEvent<> ::loki/sync-arena body arg)
-       (publicEvent<> ::loki/sync-arena body))
-     (.send ^Sendable room ))))
+       (private-event<> loki/sync-arena body arg)
+       (public-event<> loki/sync-arena body))
+     (c/send room ))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn pub-event
+
+  ""
+  [disp msg]
+  (c/debug "pub msg = %s" (:code msg))
+  (doseq [[_ c] (:handlers @disp)]
+    (cas/go (cas/>! c msg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn bcast! ""
-  ([room code body] (bcast! room code body nil))
+(defn bcast!
+
+  ""
+
+  ([room code body]
+   (bcast! room code body nil))
   ([room code body arg]
-   (loki/broad-cast room (publicEvent<> code body arg))))
+   (loki/broad-cast room (public-event<> code body arg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn stop! ""
-  ([room body] (stop! room body nil))
-  ([room body arg] (bcast! room ::loki/stop body arg)))
+(defn stop!
+
+  ""
+
+  ([room body]
+   (stop! room body nil))
+  ([room body arg]
+   (bcast! room loki/stop body arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

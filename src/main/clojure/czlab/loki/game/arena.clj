@@ -1,10 +1,16 @@
-;; Copyright (c) 2013-2017, Kenneth Leung. All rights reserved.
-;; The use and distribution terms for this software are covered by the
-;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;; which can be found in the file epl-v10.html at the root of this distribution.
-;; By using this software in any fashion, you are agreeing to be bound by
-;; the terms of this license.
-;; You must not remove this notice, or any other, from this software.
+;; Licensed under the Apache License, Version 2.0 (the "License");
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
+;;
+;; Copyright © 2013-2022, Kenneth Leung. All rights reserved.
 
 (ns ^{:doc ""
       :author "Kenneth Leung"}
@@ -14,152 +20,144 @@
   (:require [czlab.loki.net.core :as nc]
             [czlab.loki.net.disp :as dp]
             [czlab.loki.xpis :as loki]
-            [czlab.basal.log :as log]
             [clojure.java.io :as io]
-            [czlab.wabbit.xpis :as xp]
-            [czlab.basal.format :as f]
             [czlab.basal.core :as c]
             [czlab.basal.io :as i]
-            [czlab.basal.str :as s]
+            [czlab.basal.util :as u]
             [czlab.loki.session :as ss])
 
-  (:import [java.util.concurrent.atomic AtomicInteger]
-           [czlab.jasal
-            Restartable
-            Startable
-            Initable
-            Idable
-            Openable
-            Receivable
-            Sendable
-            Dispatchable]
-           [java.io Closeable]))
+  (:import [java.io Closeable]
+           [java.util.concurrent.atomic AtomicInteger]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn- fmtStartBody [impl sessions]
+(defn- fmtStartBody
+
+  ""
+  [impl sessions]
+
   (c/preduce<map>
     #(let [{:keys [number player]}
            (deref %2)
-           yid (c/id?? player)
+           yid (:id player)
            g (loki/get-player-gist impl yid)]
        (assoc! %1
                yid
                (merge {:pnum number} g))) sessions))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(c/decl-mutable GameArena
-  Idable
-  (id [me] (:id @me))
-  Openable
-  (open [me] (.open me nil))
-  (open [me _]
-    (let [{:keys [disp conns source game]} @me
-          sss (sort-by #(:created (deref %)) (vals conns))
-          g (@(:implClass game) me sss)]
-      (log/debug "activating room [%s]" (c/id?? me))
-      (doseq [s sss] (loki/subsc disp (dp/esubr<> s)))
-      (c/copy* me
-               {:impl g
-                :latch conns
-                :starting? false
-                :opened? true :active? false})
-      (.init ^Initable g nil)
-      (nc/bcast! me ::loki/start (fmtStartBody g sss))))
-  (close [me]
-    (log/debug "closing arena [%s]" (c/id?? me))
-    (doseq [[_ s] (:conns @me)]
-      (doto s ss/removeSession i/closeQ))
-    (c/setf! me :conns nil)
-    ((:finz @me) (c/id?? me)))
-  Restartable
-  (restart [me _]
-    (log/debug "arena [%s] restart() called" (c/id?? me))
-    (->> (-> (:impl @me)
-             (fmtStartBody (vals (:conns @me))))
-         (nc/bcast! me ::loki/restart)))
-  (restart [me] (.restart me nil))
-  Startable
-  (start [me arg]
-    (log/debug "arena [%s] start called" (c/id?? me))
-    (c/setf! me :active? true)
-    (.start ^Startable (:impl @me) arg))
-  (start [me] (.start me nil))
-  (stop [me]
-    (c/setf! me :active? false))
-  loki/GameRoom
-  (count-players [me] (count (:conns @me)))
-  (broad-cast [me evt]
-    (loki/pub-event (:disp @me) evt))
-  (can-open-room? [me]
-    (and (not (:opened? @me))
-         (>= (loki/count-players me)
-             (:minPlayers (:game @me)))))
-  (on-room-event [me evt]
-    (let [{:keys [context body]} evt
-          {:keys [impl latch conns active?]} @me]
-      (assert (some? context))
-      (cond
-        (and (not active?) (nc/isCode? ::loki/replay evt))
-        (locking me
-          (when (and (not (:starting? @me))
-                     (empty? (:latch @me)))
-            (c/copy* me {:latch conns :starting true})
-            (.restart me)))
-
-        (and (not active?) (nc/isCode? ::loki/started evt))
-        (if (c/in? latch (c/id?? context))
-          (locking me
-            (log/debug "latch: drop-off: %s" (c/id?? context))
-            (c/setf! me
-                     :latch
-                     (dissoc (:latch @me)
-                             (c/id?? context)))
-            (if (empty? (:latch @me))
-              (.start me (f/readJsonStrKW body)))))
-
-        (and active? (some? latch) (empty? latch))
-        (let [rc (loki/on-game-event impl evt)]
-          (when (and (nc/isQuit? evt)
-                     (= rc ::loki/tear-down))
-            (nc/bcast! me
-                      ::loki/play-scrubbed
-                      {:pnum (:number @context)})
-            (c/pause 1000)
-            (.close me))))))
-  Sendable
-  (send [me msg]
-    (cond
-      (nc/isPrivate? msg) (some-> ^Sendable
-                                  (:context msg) (.send msg))
-      (nc/isPublic? msg) (loki/broad-cast me msg)))
-  Receivable
-  (receive [me evt]
-    (when (:opened? @me)
-      (log/debug "room recv'ed msg %s" (nc/prettyEvent evt))
-      (cond
-        (nc/isPublic? evt) (loki/broad-cast me evt)
-        (nc/isPrivate? evt) (loki/on-room-event me evt)))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(c/decl-object<> Arena
+                 c/Sendable
+                 (send [me msg]
+                       (cond
+                         (nc/is-private? msg)
+                         (some-> (:context msg) (c/send msg))
+                         (nc/is-public? msg)
+                         (loki/broad-cast me msg)))
+                 c/Receivable
+                 (receive [me evt]
+                          (when (:opened? @me)
+                            (c/debug "room recv'ed msg %s" (nc/pretty-event evt))
+                            (cond
+                              (nc/is-public? evt)
+                              (loki/broad-cast me evt)
+                              (nc/is-private? evt)
+                              (loki/on-room-event me evt))))
+                 c/Idable
+                 (id [me] (:id @me))
+                 c/Openable
+                 (open [me] (.open me nil))
+                 (open [me _]
+                       (let [{:keys [disp conns source game]} @me
+                             sss (sort-by #(:created (deref %)) (vals conns))
+                             g (@(:implClass game) me sss)]
+                         (c/debug "activating room [%s]" (:id @me))
+                         (doseq [s sss]
+                           (loki/sub disp (dp/esubr<> s)))
+                         (swap! me merge {:impl g
+                                          :latch conns
+                                          :starting? false
+                                          :opened? true :active? false})
+                         (c/init g nil)
+                         (nc/bcast! me loki/start (fmtStartBody g sss))))
+                 Closeable
+                 (close [me]
+                        (c/debug "closing arena [%s]" (:id @me))
+                        (doseq [[_ s] (:conns @me)]
+                          (doto s ss/remove-session i/klose))
+                        (swap! me assoc :conns nil)
+                        ((:finz @me) (:id @me)))
+                 c/Restartable
+                 (restart [me]
+                          (c/debug "arena [%s] restart() called" (:id @me))
+                          (->> (-> (:impl @me)
+                                   (fmtStartBody (vals (:conns @me))))
+                               (nc/bcast! me loki/restart)))
+                 c/Startable
+                 (start [me arg]
+                        (c/debug "arena [%s] start called" (:id @me))
+                        (swap! me assoc :active? true)
+                        (c/start (:impl @me) arg))
+                 (start [me] (.start me nil))
+                 (stop [me]
+                       (swap! me assoc :active? false))
+                 loki/GameRoom
+                 (broad-cast [me evt]
+                             (loki/pub-event (:disp @me) evt))
+                 (count-players [me]
+                                (count (:conns @me)))
+                 (can-open-room? [me]
+                                 (and (not (:opened? @me))
+                                      (>= (loki/count-players me)
+                                          (:minPlayers (:game @me)))))
+                 (on-room-event [me evt]
+                                (let [{:keys [context body]} evt
+                                      {:keys [impl latch conns active?]} @me]
+                                  (assert (some? context))
+                                  (cond
+                                    (and (not active?)
+                                         (nc/is-code? loki/replay evt))
+                                    (locking me
+                                      (when (and (not (:starting? @me))
+                                                 (empty? (:latch @me)))
+                                        (swap! me merge {:latch conns :starting true})
+                                        (c/restart me)))
+                                    (and (not active?)
+                                         (nc/is-code? loki/started evt))
+                                    (if (contains? latch (:id context))
+                                      (locking me
+                                        (c/debug "latch: drop-off: %s" (:id context))
+                                        (swap! me assoc :latch (dissoc (:latch @me) (:id context)))
+                                        (if (empty? (:latch @me))
+                                          (c/start me (i/read-json body)))))
+                                    (and active?
+                                         (some? latch) (empty? latch))
+                                    (let [rc (loki/on-game-event impl evt)]
+                                      (when (and (nc/is-quit? evt)
+                                                 (= rc loki/tear-down))
+                                        (nc/bcast! me
+                                                   loki/play-scrubbed {:pnum (:number @context)})
+                                        (u/pause 1000)
+                                        (.close me)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defmacro arena<> "" [game finzer source]
-  `(czlab.basal.core/mutable<>
-     czlab.loki.game.arena.GameArena
-     {:numctr (java.util.concurrent.atomic.AtomicInteger.)
-      :disp (czlab.loki.net.disp/edispatcher<>)
-      :id (keyword (czlab.basal.core/uid<>))
-      :shutting? false
-      :opened? false
-      :active? false
-      :source ~source
-      :finz ~finzer
-      :game ~game
-      :conns {} }))
+(defmacro arena<>
+
+  ""
+  [game finzer source]
+
+  `(atom (c/object<> Arena {:numctr (java.util.concurrent.atomic.AtomicInteger.)
+                            :disp (czlab.loki.net.disp/edispatcher<>)
+                            :id (keyword (czlab.basal.util/uid<>))
+                            :shutting? false
+                            :opened? false
+                            :active? false
+                            :source ~source
+                            :finz ~finzer
+                            :game ~game
+                            :conns {} })))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

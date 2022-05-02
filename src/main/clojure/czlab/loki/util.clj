@@ -1,23 +1,26 @@
-;; Copyright (c) 2013-2017, Kenneth Leung. All rights reserved.
-;; The use and distribution terms for this software are covered by the
-;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;; which can be found in the file epl-v10.html at the root of this distribution.
-;; By using this software in any fashion, you are agreeing to be bound by
-;; the terms of this license.
-;; You must not remove this notice, or any other, from this software.
+;; Licensed under the Apache License, Version 2.0 (the "License");
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
+;;
+;; Copyright © 2013-2022, Kenneth Leung. All rights reserved.
 
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
   czlab.loki.util
 
-  (:require [czlab.basal.log :as log]
-            [czlab.basal.core :as c]
-            [czlab.basal.str :as s]
-            [czlab.convoy.core :as cc])
+  (:require [czlab.basal.core :as c])
 
-  (:import [clojure.lang APersistentVector]
-           [java.lang Math]))
+  (:import [java.lang Math]
+           [clojure.lang APersistentVector]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -25,16 +28,24 @@
 (def RMSN :room-and-session)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn deg->rad "" [deg] (* deg (/ Math/PI 180)))
+(defn deg->rad
+
+  ""
+  [deg]
+
+  (* deg (/ Math/PI 180)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn rad->deg "" [rad] (* rad (/ 180 Math/PI)))
+(defn rad->deg
+
+  ""
+  [rad]
+
+  (* rad (/ 180 Math/PI)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (defn dxdy
+
   "Calculate object's positional deltas after tick"
   ^APersistentVector
   [{:keys [speed theta] :as obj} dt]
@@ -43,10 +54,12 @@
    (* dt speed (Math/sin theta))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
 (defn moveObject!
+
   "Move object to new position after tick"
-  ([obj dt] (moveObject! obj dt true))
+
+  ([obj dt]
+   (moveObject! obj dt true))
   ([{:keys [x y] :as obj} dt openGL?]
    (let [[dx dy] (dxdy obj dt)]
      (if openGL?

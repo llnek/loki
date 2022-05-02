@@ -1,25 +1,30 @@
-;; Copyright (c) 2013-2017, Kenneth Leung. All rights reserved.
-;; The use and distribution terms for this software are covered by the
-;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;; which can be found in the file epl-v10.html at the root of this distribution.
-;; By using this software in any fashion, you are agreeing to be bound by
-;; the terms of this license.
-;; You must not remove this notice, or any other, from this software.
+;; Licensed under the Apache License, Version 2.0 (the "License");
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
+;;
+;; Copyright © 2013-2022, Kenneth Leung. All rights reserved.
 
 (ns ^{:doc ""
       :author "Kenneth Leung"}
 
   czlab.loki.session
 
-  (:require [czlab.basal.log :as log]
-            [czlab.convoy.core :as cc]
-            [czlab.basal.core :as c]
-            [czlab.basal.str :as s]
+  (:require [czlab.basal.core :as c]
+            [czlab.basal.util :as u]
             [czlab.basal.io :as i]
-            [czlab.loki.util :as u]
+            [czlab.niou.core :as cc]
             [czlab.loki.net.core :as nc])
 
-  (:import [czlab.jasal Openable Sendable Idable]))
+  (:import [java.io Closeable]
+           [czlab.basal XData]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
@@ -27,95 +32,103 @@
 (def ^:private sessions-db (atom {}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(c/decl-mutable GameSession
-  Openable
-  (open [me options]
-    (c/copy* me
-             (merge {:status true}
-                    (select-keys options
-                                 [:source :socket]))))
-  (close [me]
-    (i/closeQ (:socket @me))
-    (c/copy* me
-             {:status false :socket nil}))
-  Idable
-  (id [me] (:id @me))
-  Sendable
-  (send [me msg]
-    (let [{:keys [socket shutting? status]} @me]
-      (if (and status
-               (not shutting?))
-        (some-> socket
-                (cc/send-ws-string (nc/encodeEvent msg)))))))
+(c/decl-object<> GameSession
+                 c/Openable
+                 (open [me options]
+                       (swap! me merge (merge {:status true}
+                                              (select-keys options
+                                                           [:source :socket]))) me)
+                 Closeable
+                 (close [me]
+                        (i/klose (:socket @me))
+                        (swap! me merge {:status false :socket nil}))
+                 c/Idable
+                 (id [me] (:id @me))
+                 c/Sendable
+                 (send [me msg]
+                       (let [{:keys [socket shutting? status]} @me]
+                         (if (and status
+                                  (not shutting?))
+                           (some-> socket
+                                   (cc/reply-result (cc/ws-msg<> {:socket socket
+                                                                  :is-text? true
+                                                                  :body (XData. (nc/encode-event msg))})))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn session<> "" [room player settings]
-  (let [sid (s/toKW "sess#" (c/seqint2))
-        pid (c/id?? player)
-        s (c/mutable<> GameSession
-                       (merge settings
-                              {:roomid (c/id?? room)
-                               :shutting? false
-                               :created (c/now<>)
-                               :status false
-                               :source nil
-                               :socket nil
-                               :id sid
-                               :player player}))]
+(defn session<>
+
+  "Create a session object linking a player to a game-room."
+  [room player settings]
+
+  (let [sid (c/x->kw "sess#" (u/seqint2))
+        pid (:id player)
+        s (atom (c/object<> GameSession (merge settings
+                       {:roomid (:id room)
+                        :shutting? false
+                        :created (u/system-time)
+                        :status false
+                        :source nil
+                        :socket nil
+                        :id sid
+                        :player player})))]
     (c/doto->> s
                (swap! sessions-db
-                      update-in [pid] assoc (c/id?? s)))))
+                      update-in [pid] assoc (:id @s)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn clearAllSessions "" [] (reset! sessions-db {}))
+(defn clear-all-sessions
+
+  ""
+  []
+
+  (reset! sessions-db {}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn countSessions "" [player]
+(defn count-sessions
+
+  ""
+  [player]
+
   (if player
-    (count (@sessions-db (c/id?? player))) 0))
+    (count (@sessions-db (:id player))) 0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn removeSession
+(defn remove-session
+
   ""
   [session]
+
   {:pre [(some? session)]}
+
   (c/do->nil
     (if-some [p (:player @session)]
-      (swap! sessions-db
-             update-in
-             [(c/id?? p)]
-             dissoc
-             (c/id?? session)))))
+      (swap! sessions-db update-in [(:id p)] dissoc (:id @session)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn addSession
+(defn add-session
+
   ""
   [session]
+
   {:pre [(some? session)]}
+
   (if-some [p (:player @session)]
-    (swap! sessions-db
-           update-in
-           [(c/id?? p)]
-           assoc (c/id?? session) session))
+    (swap! sessions-db update-in [(:id p)] assoc (:id @session) session))
   session)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defn removeSessions
+(defn remove-sessions
+
   ""
   [player]
+
   {:pre [(some? player)]}
+
   (c/do->nil
-    (if-some [pid (c/id?? player)]
+    (if-some [pid (:id player)]
       (let [m (@sessions-db pid)]
         (swap! sessions-db dissoc pid)
-        (doseq [[_ c] m] (i/closeQ c))))))
+        (doseq [[_ c] m] (i/klose c))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

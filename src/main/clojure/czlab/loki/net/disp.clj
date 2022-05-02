@@ -1,10 +1,16 @@
-;; Copyright (c) 2013-2017, Kenneth Leung. All rights reserved.
-;; The use and distribution terms for this software are covered by the
-;; Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;; which can be found in the file epl-v10.html at the root of this distribution.
-;; By using this software in any fashion, you are agreeing to be bound by
-;; the terms of this license.
-;; You must not remove this notice, or any other, from this software.
+;; Licensed under the Apache License, Version 2.0 (the "License");
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
+;;
+;; Copyright © 2013-2022, Kenneth Leung. All rights reserved.
 
 (ns ^{:doc ""
       :author "Kenneth Leung"}
@@ -12,7 +18,6 @@
   czlab.loki.net.disp
 
   (:require [czlab.loki.xpis :as loki]
-            [czlab.basal.log :as log]
             [clojure.core.async
              :as cas
              :refer
@@ -24,80 +29,76 @@
               go-loop]]
             [czlab.basal.core :as c]
             [czlab.basal.io :as i]
-            [czlab.basal.str :as s]
+            [czlab.basal.util :as u]
             [czlab.loki.net.core :as nc])
 
-  (:import [czlab.jasal Sendable Receivable]
-           [java.io Closeable]))
+  (:import [java.io Closeable]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;(set! *warn-on-reflection* true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(c/decl-object EventSubr
-  Receivable
+(c/decl-object<> EventSubr
+  c/Receivable
   (receive [me evt]
     (when (= (:type me)
              (:type evt))
-      (log/debug "[%s]: recv'ed msg: %s" (c/id?? me) (nc/prettyEvent evt))
-      (.send ^Sendable
-             (:session me) evt))))
+      (c/debug "[%s]: recv'ed msg: %s" (:id me) (nc/pretty-event evt))
+      (c/send (:session me) evt))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defmacro esubr<> "" [session]
+(defmacro esubr<>
+
+  ""
+  [session]
+
   `(c/object<> czlab.loki.net.disp.EventSubr
-               {:id (czlab.basal.str/toKW
-                      "subr#" (czlab.basal.core/seqint2))
-                :session ~session
-                :type ::loki/public }))
+               {:session ~session
+                :type loki/type-public
+                :id (c/x->kw "subr#" (czlab.basal.util/seqint2)) }))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(c/decl-atomic EventDispatcher
-  loki/PubSub
-  (unsubsc-if-session [me s]
-    (doseq [[su _] (:handlers @me)
-            :let [s (:session su)]
-            :when (c/objEQ? su s)]
-      (.unsubsc me su)))
-  (pub-event [me msg]
-    (log/debug "pub msg = %s" (:code msg))
-    (doseq [[_ c] (:handlers @me)]
-      (cas/go (cas/>! c msg))))
-  (unsubsc [me su]
-    (when-some [c (get (:handlers @me) su)]
-      (cas/close! c)
-      (c/alter-atomic me
-                      update-in
-                      [:handlers] dissoc su)))
-  (subsc [me su]
-    (let [^Receivable r su
-          c (cas/chan 4)]
-      (c/alter-atomic me
-                      update-in [:handlers] assoc su c)
-      (cas/go-loop []
-        (when-some [msg (cas/<! c)]
-          (if (= (:type su)
-                 (:type msg))
-            ;;cant type hint inside async code
-            (.receive r msg))
-          (recur)))))
-  Closeable
-  (close [me]
-    (doseq [[_ c] (:handlers @me)]
-      (cas/close! c))
-    (c/alter-atomic me
-                    assoc :handlers {})))
+(c/decl-object<> Dispatcher
+                 Closeable
+                 (close [me]
+                        (doseq [[_ c]
+                                (:handlers @me)] (cas/close! c))
+                        (swap! me assoc :handlers {}))
+                 loki/PubSub
+                (unsub-if-session [me session]
+                                  (doseq [[su _] (:handlers @me)
+                                          :let [s (:session su)]
+                                          :when (u/obj-eq? su s)]
+                                    (loki/unsub me su)))
+                (unsub [me handler]
+                       (when-some [c (get (:handlers @me) handler)]
+                         (cas/close! c)
+                         (swap! me update-in [:handlers] dissoc handler)))
+                (sub [me handler]
+                     (let [c (cas/chan 4)]
+                       (swap! me update-in [:handlers] assoc handler c)
+                       (cas/go-loop []
+                                    (when-some [msg (cas/<! c)]
+                                      (if (= (:type handler)
+                                             (:type msg))
+                                        ;;cant type hint inside async code
+                                        (c/receive handler msg))
+                                      (recur)))))
+                (pub-event [me msg]
+                           (c/debug "pub msg = %s" (:code msg))
+                           (doseq [[_ c] (:handlers @me)]
+                             (cas/go (cas/>! c msg)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-(defmacro edispatcher<> "" []
-  `(czlab.basal.core/atomic<>
-     czlab.loki.net.disp.EventDispatcher
-     {:id (czlab.basal.str/toKW
-            "disp#" (czlab.basal.core/seqint2)) :handlers {}}))
+(defmacro edispatcher<>
+
+  ""
+  []
+
+  `(atom (c/object<> Dispatcher
+                     {:handlers {}
+                      :id (czlab.basal.core/x->kw "disp#"
+                                                  (czlab.basal.util/seqint2)) })))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
