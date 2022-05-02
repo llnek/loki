@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defproject io.czlab/loki "1.0.0"
+(defproject io.czlab/loki "2.1.0"
 
   :license {:url "https://www.apache.org/licenses/LICENSE-2.0.txt"
             :name "Apache License"}
