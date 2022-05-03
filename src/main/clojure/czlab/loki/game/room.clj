@@ -44,7 +44,7 @@
 (def ^:private vacancy 1000)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn countFreeRooms
+(defn count-free-rooms
 
   ""
   ^long [gameid]
@@ -52,7 +52,7 @@
   (count (get @free-rooms gameid)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn countGameRooms
+(defn count-game-rooms
 
   ""
   ^long [gameid]
@@ -60,7 +60,7 @@
   (count (get @game-rooms gameid)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn clearFreeRooms
+(defn clear-free-rooms
 
   "Internal only"
   {:no-doc true}
@@ -70,7 +70,7 @@
     (swap! free-rooms assoc gameid (ordered-map))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn clearGameRooms
+(defn clear-game-rooms
 
   "Internal only"
   {:no-doc true}
@@ -80,7 +80,7 @@
     (swap! game-rooms assoc gameid (ordered-map))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn- removeXXXRoom
+(defn- remove-xxx-room
 
   ""
   [gameid roomid db dbtxt]
@@ -93,23 +93,23 @@
       r)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn removeGameRoom
+(defn remove-game-room
 
   "Remove an active room"
   [gameid roomid]
 
-  (removeXXXRoom gameid roomid game-rooms "room(A)"))
+  (remove-xxx-room gameid roomid game-rooms "room(A)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn removeFreeRoom
+(defn remove-free-room
 
   "Remove a waiting room"
   [gameid roomid]
 
-  (removeXXXRoom gameid roomid free-rooms "room(F)"))
+  (remove-xxx-room gameid roomid free-rooms "room(F)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn- addXXXRoom
+(defn- add-xxx-room
 
   ""
   [room db dbt]
@@ -117,8 +117,8 @@
   {:pre [(some? room)]}
 
   (locking _room-mutex_
-    (let [gid (:id  (:game @room))
-          rid (:id room)
+    (let [gid (c/id  (:game @room))
+          rid (c/id room)
           m? (contains? @db gid)]
       (c/debug "adding a %s: %s, game: %s" dbt rid gid)
       (if m?
@@ -127,23 +127,23 @@
       room)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn- addFreeRoom
+(defn- add-free-room
 
   "Add a new partially filled room into the pending set"
   [room]
 
-  (addXXXRoom room free-rooms "room(F)"))
+  (add-xxx-room room free-rooms "room(F)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn- addGameRoom
+(defn- add-game-room
 
   "Move room into the active set"
   [room]
 
-  (addXXXRoom room game-rooms "room(A)"))
+  (add-xxx-room room game-rooms "room(A)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn- detachFreeRoom
+(defn- detach-free-room
 
   ""
   [gameid roomid]
@@ -153,24 +153,24 @@
   (swap! free-rooms update-in [gameid] dissoc roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn- getFreeRoom
+(defn- get-free-room
 
   "Returns a free room which is detached from the pending set"
 
   ([gameid roomid]
    (locking _room-mutex_
      (when-some [r (get (@free-rooms gameid) roomid)]
-       (detachFreeRoom gameid (c/id?? r))
+       (detach-free-room gameid (c/id?? r))
        r)))
 
   ([gameid]
    (locking _room-mutex_
      (when-some [[_ r] (first (@free-rooms gameid))]
-       (detachFreeRoom gameid (c/id?? r))
+       (detach-free-room gameid (c/id?? r))
        r))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn lookupFreeRoom
+(defn lookup-free-room
 
   ""
   [gameid roomid]
@@ -179,7 +179,7 @@
   (get (@free-rooms gameid) roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn lookupGameRoom
+(defn lookup-game-room
 
   ""
   [gameid roomid]
@@ -188,12 +188,12 @@
   (get (@game-rooms gameid) roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn- newFreeRoom
+(defn- new-free-room
 
   ""
   [game {:keys [source] :as options}]
 
-  (let [p (partial removeGameRoom (:id game))
+  (let [p (partial remove-game-room (:id game))
         room (ga/arena<> game p source)]
     (c/debug "created a new room(F): %s" (:id room))
     room))
@@ -235,8 +235,8 @@
   [game plyr arg]
 
   (locking _room-mutex_
-    (let [room (or (getFreeRoom (:id game))
-                   (newFreeRoom game arg))
+    (let [room (or (get-free-room (c/id game))
+                   (new-free-room game arg))
           s (get-in arg [:body :settings])
           pss (some-> room (connect plyr s))]
       (when (some? pss)
@@ -258,9 +258,9 @@
             (do
               (c/debug "room has enough players, can open")
               (c/debug "room.canOpen = true")
-              (addGameRoom room)
+              (add-game-room room)
               (c/open room))
-            (addFreeRoom room))))
+            (add-free-room room))))
       pss)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -272,8 +272,8 @@
   {:pre [(some? plyr)]}
 
   (locking _room-mutex_
-    (let [room (or (lookupGameRoom gameid roomid)
-                   (getFreeRoom gameid roomid))
+    (let [room (or (lookup-game-room gameid roomid)
+                   (get-free-room gameid roomid))
           s (get-in arg [:body :settings])
           game (:game (some-> room deref))
           ch (:socket arg)]
@@ -294,9 +294,9 @@
             (do
               (c/debug "room has enough players, can open")
               (c/debug "room.canOpen = true")
-              (addGameRoom room)
+              (add-game-room room)
               (c/open room {})
-            (addFreeRoom room))
+            (add-free-room room))
           pss))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

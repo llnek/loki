@@ -33,20 +33,25 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (c/decl-object<> GameSession
+                 c/AtomicGS
+                 (getf [me n]
+                       (get @(:o me) n))
+                 (setf [me n v]
+                       (swap! (:o me) assoc n v))
                  c/Openable
                  (open [me options]
-                       (swap! me merge (merge {:status true}
-                                              (select-keys options
-                                                           [:source :socket]))) me)
+                       (swap! (:o me) merge (merge {:status true}
+                                                   (select-keys options
+                                                                [:source :socket]))) me)
                  Closeable
                  (close [me]
-                        (i/klose (:socket @me))
-                        (swap! me merge {:status false :socket nil}))
+                        (i/klose (.getf me :socket))
+                        (swap! (:o me) merge {:status false :socket nil}))
                  c/Idable
-                 (id [me] (:id @me))
+                 (id [me] (.getf me :id))
                  c/Sendable
                  (send [me msg]
-                       (let [{:keys [socket shutting? status]} @me]
+                       (let [{:keys [socket shutting? status]} @(:o me)]
                          (if (and status
                                   (not shutting?))
                            (some-> socket
@@ -62,18 +67,18 @@
 
   (let [sid (c/x->kw "sess#" (u/seqint2))
         pid (:id player)
-        s (atom (c/object<> GameSession (merge settings
-                       {:roomid (:id room)
-                        :shutting? false
-                        :created (u/system-time)
-                        :status false
-                        :source nil
-                        :socket nil
-                        :id sid
-                        :player player})))]
+        s (c/atomic<> GameSession (merge settings
+                                         {:roomid (:id room)
+                                          :shutting? false
+                                          :status false
+                                          :source nil
+                                          :socket nil
+                                          :id sid
+                                          :player player
+                                          :created (u/system-time)}))]
     (c/doto->> s
                (swap! sessions-db
-                      update-in [pid] assoc (:id @s)))))
+                      update-in [pid] assoc (c/id s)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn clear-all-sessions

@@ -59,24 +59,28 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (c/decl-object<> Dispatcher
+                 c/AtomicGS
+                 (getf [me n] (get @(:o me) n))
+                 (setf [me n v]
+                       (swap! (:o me) assoc n v))
                  Closeable
                  (close [me]
                         (doseq [[_ c]
-                                (:handlers @me)] (cas/close! c))
-                        (swap! me assoc :handlers {}))
+                                (.getf me :handlers)] (cas/close! c))
+                        (.setf me :handlers {}))
                  loki/PubSub
                 (unsub-if-session [me session]
-                                  (doseq [[su _] (:handlers @me)
+                                  (doseq [[su _] (.getf me :handlers)
                                           :let [s (:session su)]
                                           :when (u/obj-eq? su s)]
                                     (loki/unsub me su)))
                 (unsub [me handler]
-                       (when-some [c (get (:handlers @me) handler)]
+                       (when-some [c (get (.getf me :handlers) handler)]
                          (cas/close! c)
-                         (swap! me update-in [:handlers] dissoc handler)))
+                         (swap! (:o me) update-in [:handlers] dissoc handler)))
                 (sub [me handler]
                      (let [c (cas/chan 4)]
-                       (swap! me update-in [:handlers] assoc handler c)
+                       (swap! (:o me) update-in [:handlers] assoc handler c)
                        (cas/go-loop []
                                     (when-some [msg (cas/<! c)]
                                       (if (= (:type handler)
@@ -86,19 +90,19 @@
                                       (recur)))))
                 (pub-event [me msg]
                            (c/debug "pub msg = %s" (:code msg))
-                           (doseq [[_ c] (:handlers @me)]
+                           (doseq [[_ c] (.getf me :handlers)]
                              (cas/go (cas/>! c msg)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defmacro edispatcher<>
+(defn edispatcher<>
 
   ""
   []
 
-  `(atom (c/object<> Dispatcher
-                     {:handlers {}
-                      :id (czlab.basal.core/x->kw "disp#"
-                                                  (czlab.basal.util/seqint2)) })))
+  (c/atomic<> Dispatcher
+              {:handlers {}
+               :id (czlab.basal.core/x->kw "disp#"
+                                           (czlab.basal.util/seqint2)) }))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
