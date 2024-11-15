@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-(defproject io.czlab/loki "2.1.0"
+(defproject io.czlab/loki "2.2.0"
 
   :license {:url "https://www.apache.org/licenses/LICENSE-2.0.txt"
             :name "Apache License"}
@@ -8,16 +8,16 @@
   :description "Network game server framework"
   :url "https://github.com/llnek/loki"
 
-  :dependencies [[org.clojure/core.async "1.5.648"]
-                 [io.czlab/jasal "2.1.0"]
-                 [io.czlab/bixby "2.1.0"]]
+  :dependencies [[org.clojure/core.async "1.6.681"]
+                 [io.czlab/jasal "2.2.0"]
+                 [io.czlab/bixby "2.2.0"]]
 
-  :plugins [[cider/cider-nrepl "0.28.3"]
+  :plugins [[cider/cider-nrepl "0.50.2" :exclusions [nrepl/nrepl]]
             [lein-codox "0.10.8"]
             [lein-cljsbuild "1.1.8"]]
 
   :profiles {:provided {:dependencies
-                        [[org.clojure/clojure "1.11.1" :scope "provided"]]}
+                        [[org.clojure/clojure "1.12.0"]]}
              :uberjar {:aot :all}}
 
   :global-vars {*warn-on-reflection* true}
@@ -33,7 +33,7 @@
 
   :jvm-opts ["-Dlog4j.configurationFile=file:attic/log4j2.xml"]
   :javac-options ["-source" "16"
-                  "-target" "16"
+                  "-target" "22"
                   "-Xlint:unchecked" "-Xlint:-options" "-Xlint:deprecation"])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
