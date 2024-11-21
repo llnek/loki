@@ -25,26 +25,30 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def type-private 3)
 (def type-public 2)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn msg-types
 
   ""
   [v]
 
-  (case v
-    type-public "public"
-    type-private "private" ""))
+  (cond
+    (= v type-public) "public"
+    (= v type-private) "private" :else ""))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def status-error 500)
 (def status-ok 200)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn status-codes
 
   ""
   [v]
 
-  (case v
-    status-ok "OK"
-    status-error "Internal Server Error" ""))
+  (cond
+    (= v status-ok) "OK"
+    (= v status-error) "Internal Server Error" :else ""))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (def playgame-req 600)
@@ -87,45 +91,47 @@
 (def game-tie 891)
 
 (def quit 911)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn msg-codes
 
   ""
   [v]
 
-  (case v
-    playgame-req "playgame-req"
-    playreq-ok "playreq-ok"
-    playreq-nok "playreq-nok"
-    joingame-req "joingame-req"
-    joinreq-ok "joinreq-ok"
-    joinreq-nok "joinreq-nok"
-    user-nok "user-nok"
-    game-nok "game-nok"
-    room-nok "room-nok"
-    room-filled "room-filled"
-    rooms-full "rooms-full"
-    player-joined "player-joined"
-    await-start "await-start"
-    connected "connected"
-    started "started"
-    closed "closed"
-    tear-down "tear-down"
-    restart "restart"
-    start "start"
-    stop "stop"
-    start-round "start-round"
-    end-round "end-round"
-    poke-rumble "poke-rumble"
-    poke-move "poke-move"
-    poke-wait "poke-wait"
-    sync-arena "sync-arena"
-    replay "replay"
-    play-move "play-move"
-    play-scrubbed "play-scrubbed"
-    game-won "game-won"
-    game-tie "game-tie"
-    quit "quit"
+  (cond
+    (= v playgame-req) "playgame-req"
+    (= v playreq-ok) "playreq-ok"
+    (= v playreq-nok) "playreq-nok"
+    (= v joingame-req) "joingame-req"
+    (= v joinreq-ok) "joinreq-ok"
+    (= v joinreq-nok) "joinreq-nok"
+    (= v user-nok) "user-nok"
+    (= v game-nok) "game-nok"
+    (= v room-nok) "room-nok"
+    (= v room-filled) "room-filled"
+    (= v rooms-full) "rooms-full"
+    (= v player-joined) "player-joined"
+    (= v await-start) "await-start"
+    (= v connected) "connected"
+    (= v started) "started"
+    (= v closed) "closed"
+    (= v tear-down) "tear-down"
+    (= v restart) "restart"
+    (= v start) "start"
+    (= v stop) "stop"
+    (= v start-nxt-round) "start-round"
+    (= v end-cur-round) "end--round"
+    (= v poke-rumble) "poke-rumble"
+    (= v poke-move) "poke-move"
+    (= v poke-wait) "poke-wait"
+    (= v sync-arena) "sync-arena"
+    (= v replay) "replay"
+    (= v play-move) "play-move"
+    (= v play-scrubbed) "play-scrubbed"
+    (= v game-won) "game-won"
+    (= v game-tie) "game-tie"
+    (= v quit) "quit"
+    :else
     ""))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

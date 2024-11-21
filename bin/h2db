@@ -1,0 +1,107 @@
+#!/bin/bash
+##############################################################################
+### osx sux, has no proper readlink.
+check_darwin() {
+  BIXBY_BIN=$(perl -e 'use Cwd "abs_path";print abs_path(shift)' $0)
+  BIXBY_BIN=$(dirname $BIXBY_BIN)
+  BIXBY_HOME=$(dirname $BIXBY_BIN)
+}
+
+check_linux() {
+  BIXBY_BIN=$(dirname $(readlink -f $0))/../
+  BIXBY_HOME=$(readlink -f $BIXBY_BIN)
+  BIXBY_BIN=$BIXBY_HOME/bin
+}
+
+##############################################################################
+OSTYPE=`uname -s`
+CWD=`pwd`
+if [ "$OSTYPE" = "Darwin" ]; then
+  check_darwin
+else
+  check_linux
+fi
+
+#############################################################################
+cd $BIXBY_HOME
+CWD=`pwd`
+
+##############################################################################
+if [ "$JAVA_HOME" = "" ] ; then
+  echo "Attempt to reference standard java location on system: /usr/bin."
+  #echo "Please set JAVA_HOME"
+  #exit -1
+  JAVA_HOME=/usr
+fi 
+
+##############################################################################
+MAINZ=czlab.hoard.h2db.server
+
+##############################################################################
+JCMD=$JAVA_HOME/bin/java
+LIBS=$BIXBY_HOME/lib/*
+
+TCPPORT=9092
+TCPURL=tcp://localhost:$TCPPORT
+TCPPWD=admin123
+
+DBUSER=sa 
+DBPWD=admin123 
+
+DBDIR=/tmp
+DBID=bixby
+
+WEBPWD=admin123
+WEBPORT=8082
+
+TRACE=-trace
+VMOPTS=""
+
+##############################################################################
+stop_db() {
+  #"-tcpShutdownForce" "-tcpShutdown" "tcp://localhost:9092"
+  local opts=$@
+  exec sh -c \
+    "exec $JCMD $VMOPTS -cp \"$LIBS\" $MAINZ -tcpPassword $TCPPWD $TRACE -tcpShutdown $TCPURL"
+}
+
+##############################################################################
+start_db() {
+  #"-tcpAllowOthers" "-tcpSSL"
+  local opts=$@
+  exec sh -c \
+    "exec $JCMD $VMOPTS -cp \"$LIBS\" $MAINZ -blocking $TRACE -user $DBUSER -passwd $DBPWD -dbid $DBID -tcp -tcpPassword $TCPPWD -tcpDaemon -tcpPort $TCPPORT -baseDir $DBDIR"
+}
+
+##############################################################################
+start_web() {
+  #"-webAllowOthers" "-webSSL"
+  local opts=$@
+  exec sh -c \
+    "exec $JCMD $VMOPTS -cp \"$LIBS\" $MAINZ -blocking $TRACE -web -browser -webDaemon -webPort $WEBPORT -webAdminPassword $WEBPWD"
+}
+
+##############################################################################
+run_proc_bg() {
+  exec sh -c \
+    "exec nohup $JCMD  \
+    -cp \"$LIBS\" $MAINCZ --home \"$BIXBY_HOME\" $@ > /dev/null 2>&1 &"
+}
+
+##############################################################################
+usage() {
+  echo "usage: h2db <start | stop | web>"
+  echo ""
+}
+
+##############################################################################
+case $1 in
+  start | run ) start_db $@ ;;
+  web ) start_web $@ ;;
+  stop ) stop_db $@ ;;
+  *) usage ;;
+esac
+
+##############################################################################
+#EOF
+

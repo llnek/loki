@@ -1,0 +1,193 @@
+#!/bin/bash
+
+##############################################################################
+Color_Purple='\033[0;35m'       # Purple
+Color_Off='\033[0m'       # Text Reset
+
+##############################################################################
+### osx sux, has no proper readlink.
+check_darwin() {
+  BIXBY_BIN=$(perl -e 'use Cwd "abs_path";print abs_path(shift)' $0)
+  BIXBY_BIN=$(dirname $BIXBY_BIN)
+  BIXBY_HOME=$(dirname $BIXBY_BIN)
+}
+
+check_linux() {
+  BIXBY_BIN=$(dirname $(readlink -f $0))/../
+  BIXBY_HOME=$(readlink -f $BIXBY_BIN)
+  BIXBY_BIN=$BIXBY_HOME/bin
+}
+
+##############################################################################
+OSTYPE=`uname -s`
+CWD=`pwd`
+if [ "$OSTYPE" = "Darwin" ]; then
+  check_darwin
+else
+  check_linux
+fi
+
+#############################################################################
+#BVERSION=`cat $BIXBY_HOME/etc/VERSION`
+
+splash() {
+  echo ""
+  echo -e "${Color_Purple},-----.  ,--.          ,--.            ${Color_Off}"
+  echo -e "${Color_Purple}|  |) /_ \`--',--.  ,--.|  |-.,--. ,--. ${Color_Off}"
+  echo -e "${Color_Purple}|  .-.  \\,--. \\  \`'  / | .-. '\\  '  /  ${Color_Off}"
+  echo -e "${Color_Purple}|  '--' /|  | /  /.  \\ | \`-' | \\   '   ${Color_Off}"
+  echo -e "${Color_Purple}\`------' \`--''--'  '--' \`---'.-'  /    ${Color_Off}"
+  echo -e "${Color_Purple}                            \`---'     ${Color_Off}"
+  #echo -e "${Color_Purple}Version: ${BVERSION}${Color_Off}"
+  echo ""
+  echo ""
+}
+
+
+#############################################################################
+cd $BIXBY_HOME
+CWD=`pwd`
+#echo -e "${Color_Purple}Running bixby from: $CWD${Color_Off}"
+
+##############################################################################
+if [ "$JAVA_HOME" = "" ] ; then
+  echo -e "${Color_Purple}Attempt to reference standard java location on system: /usr/bin.${Color_Off}"
+  #echo "Please set JAVA_HOME"
+  #exit -1
+  JAVA_HOME=/usr
+fi
+
+##############################################################################
+CONSCZ=czlab.bixby.cons.con7
+KILLCZ=czlab.bixby.cons.con4
+MAINCZ=czlab.bixby.exec
+PLIBS=$BIXBY_HOME/patch/*
+LIBS=$BIXBY_HOME/lib/*
+JCMD=$JAVA_HOME/bin/java
+BCPS=$PLIBS:$LIBS:$CLASSPATH
+
+
+##############################################################################
+AGENT="-agentlib:jdwp=transport=dt_socket,server=y,address=8787,suspend=n"
+VMOPTS="-Xms512m -Xmx7096m "
+LOGREF="-Dlog4j.configurationFile=file:etc/log4j2c.xml"
+KILLPORT="-Dbixby.kill.port=4444"
+SYSPPS="${LOGREF} ${KILLPORT}"
+BXARG="--home ${BIXBY_HOME}"
+
+##############################################################################
+if [ ! -e "logs" ]; then
+  mkdir "logs"
+fi
+
+if [ ! -d "logs" ]; then
+  echo "error: directory [logs] is not found."
+fi
+
+##############################################################################
+run_console() {
+  local opts=$@
+  exec sh -c \
+    "exec $JCMD $VMOPTS -cp \"$BCPS\" $SYSPPS $CONSCZ $BXARG $opts"
+}
+
+##############################################################################
+get_procid() {
+  pid=$(ps -ef | grep -F $MAINCZ | grep -v grep | awk '{print $2}')
+}
+
+##############################################################################
+show_proc() {
+  get_procid
+  if [ -n "$pid" ]; then
+    echo -e "${Color_Purple}bixby is running with process-id: ${pid}.${Color_Off}"
+  else
+    echo -e "${Color_Purple}bixby is not running.${Color_Off}"
+  fi
+}
+
+##############################################################################
+kill_proc() {
+  get_procid
+  if [ -n "$pid" ]; then
+    echo -e "${Color_Purple}bixby is stopping with process-id: ${pid}.${Color_Off}"
+    kill $pid
+  fi
+}
+
+##############################################################################
+run_proc() {
+  get_procid
+  if [ -n "$pid" ]
+  then
+    echo -e "${Color_Purple}bixby is already running with process-id: ${pid}.${Color_Off}"
+  elif [ "$2" = "-b" -o "$2" = "--background" ]
+  then
+    run_proc_bg
+  else
+    run_proc_fg
+  fi
+}
+
+##############################################################################
+stop_proc() {
+  exec sh -c \
+    "exec $JCMD $VMOPTS -cp \"$BCPS\" $SYSPPS $KILLCZ $BXARG $@"
+}
+
+##############################################################################
+run_proc_bg() {
+  exec sh -c \
+    "exec nohup $JCMD $VMOPTS -cp \"$BCPS\" $SYSPPS $MAINCZ $BXARG $@ > /dev/null 2>&1 &"
+}
+
+##############################################################################
+run_proc_fg() {
+  exec sh -c \
+    "exec $JCMD $VMOPTS -cp \"$BCPS\" $SYSPPS $MAINCZ $BXARG $@"
+}
+
+##############################################################################
+debug_proc_fg() {
+  exec sh -c \
+    "exec $JCMD $VMOPTS -cp \"$BCPS\" $SYSPPS $AGENT $MAINCZ $BXARG $@"
+}
+
+##############################################################################
+debug_proc_bg() {
+  exec sh -c \
+    "exec nohup $JCMD $VMOPTS -cp \"$BCPS\" $SYSPPS $AGENT $MAINCZ $BXARG $@ > /dev/null 2>&1 &"
+}
+
+##############################################################################
+debug_proc() {
+  get_procid
+  if [ -n "$pid" ]
+  then
+    echo -e "${Color_Purple}bixby is already running with process-id: ${pid}.${Color_Off}"
+  elif [ "$2" = "-b" -o "$2" = "--background" ]
+  then
+    debug_proc_bg
+  else
+    debug_proc_fg
+  fi
+}
+
+##############################################################################
+case $1 in
+  start | run ) run_proc $@ ;;
+  debug ) debug_proc $@ ;;
+  status ) show_proc $@ ;;
+  kill ) kill_proc $@ ;;
+  stop ) stop_proc $@ ;;
+  *) run_console $@ ;;
+esac
+
+
+##############################################################################
+cd $CWD
+exit 0
+
+##############################################################################
+#EOF
+

@@ -79,7 +79,8 @@
 
   ([userid pwd]
    (create-player userid pwd))
-  ([userid] (-> (@userid-db userid) (@player-db))))
+  ([userid]
+   (-> (@userid-db userid) (@player-db))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn logout

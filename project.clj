@@ -14,6 +14,7 @@
 
   :plugins [[cider/cider-nrepl "0.50.2" :exclusions [nrepl/nrepl]]
             [lein-codox "0.10.8"]
+            [lein-libjars "2.2.0"]
             [lein-cljsbuild "1.1.8"]]
 
   :profiles {:provided {:dependencies

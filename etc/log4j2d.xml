@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration monitorInterval="3600">
+  <Properties>
+    <Property name="logd">logs</Property>
+  </Properties>
+  <Appenders>
+    <Console name="STDOUT" target="SYSTEM_OUT">
+      <PatternLayout disableAnsi="false">
+        <pattern>
+          %highlight{[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n}{FATAL=red blink, ERROR=red, WARN=green bold, INFO=cyan, DEBUG=yellow, TRACE=blue}
+        </pattern>
+      </PatternLayout>
+    </Console>
+    <RollingFile
+      name="ROLLER"
+      fileName="${logd}/bixby.log"
+      filePattern="${logd}/bixby.log.%d{yyyyMMdd-hhmm}.gz">
+      <PatternLayout
+        pattern="[%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n"/>
+      <Policies>
+        <TimeBasedTriggeringPolicy/>
+        <SizeBasedTriggeringPolicy size="10 MB"/>
+      </Policies>
+      <DefaultRolloverStrategy max="30"/>
+    </RollingFile>
+  </Appenders>
+  <Loggers>
+    <Logger name="czlab.loki" level="debug" additivity="false">
+      <AppenderRef ref="ROLLER" />
+      <AppenderRef ref="STDOUT"/>
+    </Logger>
+    <Logger name="czlab" level="debug" additivity="false">
+      <AppenderRef ref="ROLLER" />
+      <AppenderRef ref="STDOUT" />
+    </Logger>
+    <Root level="error">
+      <AppenderRef ref="STDOUT"/>
+    </Root>
+  </Loggers>
+</Configuration>
+

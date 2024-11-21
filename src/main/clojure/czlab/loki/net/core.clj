@@ -86,7 +86,7 @@
   ([data extras]
    (c/debug "decoding json: %s" data)
    (c/try!
-     (let [{:keys [type code] :as evt} (i/read-json data)]
+     (let [{:keys [type code] :as evt} (i/read-json data "utf-8" keyword)]
        (cond
          (not (number? type))
          (u/throw-BadData "Event type info: %s" type)
