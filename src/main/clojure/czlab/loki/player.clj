@@ -48,7 +48,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- create-player
 
-  ""
+  "Returns a player object."
   [^String userid ^chars passwd]
 
   {:pre [(c/hgl? userid)]}
@@ -59,7 +59,8 @@
             pid (:id p)]
         (swap! player-db assoc pid p)
         (swap! userid-db assoc userid pid))))
-  (@player-db (@userid-db userid)))
+
+  (-> (@userid-db userid) (@player-db)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn remove-player
@@ -79,13 +80,14 @@
 
   ([userid pwd]
    (create-player userid pwd))
+
   ([userid]
    (-> (@userid-db userid) (@player-db))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn logout
 
-  ""
+  "Logout this player."
   [player]
 
   (ss/remove-sessions player)

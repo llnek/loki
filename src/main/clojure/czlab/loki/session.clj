@@ -68,20 +68,20 @@
   (let [sid (c/x->kw "sess#" (u/seqint2))
         pid (:id player)
         s (c/atomic<> GameSession (merge settings
-                                         {:roomid (:id room)
-                                          :shutting? false
+                                         {:shutting? false
                                           :status false
                                           :source nil
                                           :socket nil
                                           :id sid
                                           :player player
+                                          :roomid (c/id?? @(c/atomic-core?? room))
                                           :created (u/system-time)}))]
     (c/doto->> s
                (swap! sessions-db
                       update-in [pid] assoc (c/id s)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn clear-all-sessions
+(defn clear-sessions
 
   ""
   []
@@ -100,7 +100,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn remove-session
 
-  ""
+  "Detach this session from the player."
   [session]
 
   {:pre [(some? session)]}
@@ -117,8 +117,8 @@
 
   {:pre [(some? session)]}
 
-  (if-some [p (:player @session)]
-    (swap! sessions-db update-in [(:id p)] assoc (:id @session) session))
+  (if-some [p (:player @(:o session))]
+    (swap! sessions-db update-in [(:id p)] assoc (:id @(:o session)) session))
   session)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

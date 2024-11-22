@@ -98,7 +98,7 @@
   "Remove an active room"
   [gameid roomid]
 
-  (remove-xxx-room gameid roomid game-rooms "room(A)"))
+  (remove-xxx-room gameid roomid game-rooms "room(Active)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn remove-free-room
@@ -106,7 +106,7 @@
   "Remove a waiting room"
   [gameid roomid]
 
-  (remove-xxx-room gameid roomid free-rooms "room(F)"))
+  (remove-xxx-room gameid roomid free-rooms "room(Free)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- add-xxx-room
@@ -117,7 +117,7 @@
   {:pre [(some? room)]}
 
   (locking _room-mutex_
-    (let [gid (c/id  (:game @room))
+    (let [gid (c/id??  (c/getf room :game))
           rid (c/id room)
           m? (contains? @db gid)]
       (c/debug "adding a %s: %s, game: %s" dbt rid gid)
@@ -132,7 +132,7 @@
   "Add a new partially filled room into the pending set"
   [room]
 
-  (add-xxx-room room free-rooms "room(F)"))
+  (add-xxx-room room free-rooms "room(Free)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- add-game-room
@@ -140,7 +140,7 @@
   "Move room into the active set"
   [room]
 
-  (add-xxx-room room game-rooms "room(A)"))
+  (add-xxx-room room game-rooms "room(Active)"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- detach-free-room
@@ -149,7 +149,7 @@
   [gameid roomid]
 
   (c/debug "%s: %s, game: %s"
-             "found a room(F)" roomid gameid)
+             "found a room(Free)" roomid gameid)
   (swap! free-rooms update-in [gameid] dissoc roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -166,7 +166,7 @@
   ([gameid]
    (locking _room-mutex_
      (when-some [[_ r] (first (@free-rooms gameid))]
-       (detach-free-room gameid (c/id?? r))
+       (detach-free-room gameid (c/id r))
        r))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -175,7 +175,7 @@
   ""
   [gameid roomid]
 
-  (c/debug "looking for room(F): %s, game: %s" roomid gameid)
+  (c/debug "looking for room(Free): %s, game: %s" roomid gameid)
   (get (@free-rooms gameid) roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -184,7 +184,7 @@
   ""
   [gameid roomid]
 
-  (c/debug "looking for room(A): %s, game: %s" roomid gameid)
+  (c/debug "looking for room(Active): %s, game: %s" roomid gameid)
   (get (@game-rooms gameid) roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -193,9 +193,9 @@
   ""
   [game {:keys [source] :as options}]
 
-  (let [p (partial remove-game-room (:id game))
+  (let [p (partial remove-game-room (c/id?? game))
         room (ga/arena<> game p source)]
-    (c/debug "created a new room(F): %s" (:id room))
+    (c/debug "created a new room(Free): %s" (c/id room))
     room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -205,15 +205,12 @@
   [room player arg]
 
   (locking room
-    (let [{:keys [conns numctr]}
-          @room
-          n (. ^AtomicInteger
-               numctr
-               incrementAndGet)
+    (let [{:keys [conns numctr]} (c/deref-atomic-core?? room)
+          n (. ^AtomicInteger numctr incrementAndGet)
           s (ss/session<> room
                           player
                           (merge arg {:number n}))]
-      (swap! room assoc :conns (assoc conns (:id s) s))
+      (swap! (c/atomic-core?? room) assoc :conns (assoc conns (c/id s) s))
       (doto s ss/add-session))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -223,7 +220,7 @@
   [room session]
 
   (let [{:keys [player]} @session
-        {:keys [conns disp]} @room]
+        {:keys [conns disp]} (deref (:o room))]
     (swap! room assoc :conns (dissoc conns (:id session)))
     (ss/remove-session session)
     (loki/unsub-if-session disp session)))
@@ -235,20 +232,20 @@
   [game plyr arg]
 
   (locking _room-mutex_
-    (let [room (or (get-free-room (c/id game))
+    (let [room (or (get-free-room (c/id?? game))
                    (new-free-room game arg))
           s (get-in arg [:body :settings])
           pss (some-> room (connect plyr s))]
       (when (some? pss)
         (let
           [ch (:socket arg)
-           src {:gameid (c/sname (:id game))
-                :roomid (:id room)
-                :puid (:id plyr)
-                :pnum (:number @pss)}
+           src {:gameid (c/id?? game)
+                :roomid (c/id room)
+                :puid (c/id?? plyr)
+                :pnum (c/getf pss :number)}
            evt (nc/private-event<> loki/playreq-ok src)]
           (c/open pss arg)
-          (cc/setattr ch u/RMSN {:room room :session pss})
+          (some-> ch (cc/setattr u/RMSN {:room room :session pss}))
           (c/debug "replying msg to user: %s" (nc/pretty-event evt))
           (nc/reply-event ch evt)
           (nc/bcast! room
@@ -275,19 +272,19 @@
     (let [room (or (lookup-game-room gameid roomid)
                    (get-free-room gameid roomid))
           s (get-in arg [:body :settings])
-          game (:game (some-> room deref))
+          game (c/getf room :game)
           ch (:socket arg)]
       (when (and room
                  (< (loki/count-players room)
                     (:maxPlayers game)))
         (let [pss (connect room plyr s)
-              src {:gameid (c/sname (:id game))
-                   :roomid (:id room)
-                   :puid (:id plyr)
-                   :pnum (:number @pss)}
+              src {:gameid (c/id?? game)
+                   :roomid (c/id room)
+                   :puid (c/id?? plyr)
+                   :pnum (c/getf pss :number)}
               evt (nc/private-event<> loki/joinreq-ok src)]
           (c/open pss arg)
-          (cc/setattr ch u/RMSN {:room room :session pss})
+          (some-> ch (cc/setattr u/RMSN {:room room :session pss}))
           (nc/reply-event ch evt)
           (c/debug "replying back to user: %s" (nc/pretty-event evt))
           (if (loki/can-open-room? room)
@@ -295,9 +292,9 @@
               (c/debug "room has enough players, can open")
               (c/debug "room.canOpen = true")
               (add-game-room room)
-              (c/open room {})
+              (c/open room {}))
             (add-free-room room))
-          pss))))))
+          pss)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

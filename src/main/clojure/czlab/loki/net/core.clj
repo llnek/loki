@@ -83,18 +83,19 @@
 
   ([data]
    (decode-event data nil))
+
   ([data extras]
    (c/debug "decoding json: %s" data)
    (c/try!
-     (let [{:keys [type code] :as evt} (i/read-json data "utf-8" keyword)]
+     (let [{:keys [type code] :as evt}
+           (i/read-json data "utf-8" keyword)]
        (cond
          (not (number? type))
          (u/throw-BadData "Event type info: %s" type)
          (not (number? code))
          (u/throw-BadData "Event code info: %s" code)
          :t
-         (merge evt
-                {:type type :code code} extras))))))
+         (merge evt {:type type :code code} extras))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn errorObj<>
@@ -102,9 +103,17 @@
   ""
   {:tag APersistentMap}
 
+  ([etype ecode body]
+   (errorObj<> etype ecode body nil))
+
+  ([etype ecode]
+   (errorObj<> etype ecode nil nil))
+
   ([etype ecode body arg]
+
    {:pre [(some? etype)
           (some? ecode)]}
+
    (let [body (if (string? body) {:message body} body)
          obj {:status loki/status-error
               :timestamp (u/system-time)
@@ -115,20 +124,19 @@
        (map? arg)
        (merge obj arg)
        (some? arg)
-       (assoc obj :context arg)
-       :t obj)))
-
-  ([etype ecode body]
-   (errorObj<> etype ecode body nil))
-
-  ([etype ecode]
-   (errorObj<> etype ecode nil nil)))
+       (assoc obj :context arg) :t obj))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn eventObj<>
 
   ""
   {:tag APersistentMap}
+
+  ([etype ecode body]
+   (eventObj<> etype ecode body nil))
+
+  ([etype ecode]
+   (eventObj<> etype ecode nil nil))
 
   ([etype ecode body arg]
    {:pre [(some? etype)
@@ -144,26 +152,27 @@
        (map? arg)
        (merge obj arg)
        (some? arg)
-       (assoc obj :context arg)
-       :else obj)))
-
-  ([etype ecode body]
-   (eventObj<> etype ecode body nil))
-
-  ([etype ecode]
-   (eventObj<> etype ecode nil nil)))
+       (assoc obj :context arg) :else obj))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn private-event<> ""
+(defn private-event<>
+
+  ""
+
   ([code body]
    (private-event<> code body nil))
+
   ([code body arg]
    (eventObj<> loki/type-private code body arg)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn public-event<> ""
+(defn public-event<>
+
+  ""
+
   ([code body]
    (public-event<> code body nil))
+
   ([code body arg]
    (eventObj<> loki/type-public code body arg)))
 
@@ -216,6 +225,7 @@
 
   ([room body]
    (pokeWait! room body nil))
+
   ([room body arg]
    (c/send room
           (private-event<> loki/poke-wait body arg))))
@@ -227,6 +237,7 @@
 
   ([room body]
    (pokeMove! room body nil))
+
   ([room body arg]
    (c/send room
            (private-event<> loki/poke-move body arg))))
@@ -238,6 +249,7 @@
 
   ([room body]
    (syncArena! room body nil))
+
   ([room body arg]
    (->>
      (if arg
@@ -250,9 +262,9 @@
 
   ""
   [disp msg]
+
   (c/debug "pub msg = %s" (:code msg))
-  (doseq [[_ c] (:handlers @disp)]
-    (cas/go (cas/>! c msg))))
+  (doseq [[_ c] (:handlers @disp)] (cas/go (cas/>! c msg))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn bcast!
@@ -261,6 +273,7 @@
 
   ([room code body]
    (bcast! room code body nil))
+
   ([room code body arg]
    (loki/broad-cast room (public-event<> code body arg))))
 
@@ -271,6 +284,7 @@
 
   ([room body]
    (stop! room body nil))
+
   ([room body arg]
    (bcast! room loki/stop body arg)))
 

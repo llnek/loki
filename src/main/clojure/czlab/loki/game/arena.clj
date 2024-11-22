@@ -40,8 +40,8 @@
 
   (c/preduce<map>
     #(let [{:keys [number player]}
-           (deref %2)
-           yid (:id player)
+           (c/deref-atomic-core?? %2)
+           yid (c/id?? player)
            g (loki/get-player-gist impl yid)]
        (assoc! %1
                yid
@@ -75,8 +75,9 @@
                  c/Openable
                  (open [me] (.open me nil))
                  (open [me _]
-                       (let [{:keys [disp conns source game]} @(:o me)
-                             sss (sort-by #(:created (deref %)) (vals conns))
+                       (let [{:keys [disp conns source game]} (c/deref-atomic-core?? me)
+                             sss (sort-by #(c/getf % :created) (vals conns))
+                             ;;create the game implementation
                              g (@(:implClass game) me sss)]
                          (c/debug "activating room [%s]" (.id me))
                          (doseq [s sss]
@@ -104,7 +105,7 @@
                  (start [me arg]
                         (c/debug "arena [%s] start called" (.id me))
                         (.setf me :active? true)
-                        (c/start (.getf me :impl) arg))
+                        (loki/start-round (.getf me :impl) arg))
                  (start [me] (.start me nil))
                  (stop [me]
                        (.setf me :active? false))

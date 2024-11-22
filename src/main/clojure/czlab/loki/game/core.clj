@@ -50,30 +50,20 @@
     #(let [[k g] %2
            gameid (keyword k)
            {:keys [enabled? minp maxp impl]
-            :or {minp 1 maxp 1 impl ""}}
+            :or {minp 1 maxp 1}}
            (:network g)
            ok (c/!false? enabled?)
-           impl (c/x->kw impl)
            m
            (game<>
              {:maxPlayers (if (c/spos? maxp) maxp minp)
               :minPlayers (if (c/spos? minp) minp 1)
               :supportNetwork ok
               :name (:name g)
-              :implClass (and ok (u/var* (u/cljrt<>) impl))
+              :implClass (and ok
+                              (keyword? impl)
+                              (u/var?? (u/cljrt<>) impl))
               :id gameid})]
        (assoc! %1 gameid m)) games))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defn initGameRegistry!
-
-  "Initialize the game registry"
-  [games]
-
-  {:pre [(map? games)]}
-
-  (alter-var-root #'czlab.loki.game.core/*game-rego* loadGames games)
-  (c/info "games=\n%s" *game-rego*))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn lookup-game
@@ -85,6 +75,17 @@
   (when-some [g (*game-rego* (keyword gameid))]
     (c/debug "found game with id = %s" gameid)
     g))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn init-game-registry!
+
+  "Initialize the game registry"
+  [games]
+
+  {:pre [(map? games)]}
+
+  (alter-var-root #'czlab.loki.game.core/*game-rego* loadGames games)
+  (c/info "games=\n%s" *game-rego*))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF
