@@ -43,7 +43,8 @@
   (receive [me evt]
     (when (= (:type me)
              (:type evt))
-      (c/debug "[%s]: recv'ed msg: %s" (:id me) (nc/pretty-event evt))
+      (c/debug "[%s]: recv'ed msg: %s"
+               (:id me) (nc/pretty-event evt))
       (c/send (:session me) evt))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60,9 +61,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (c/decl-object<> Dispatcher
                  c/AtomicGS
-                 (getf [me n] (get @(:o me) n))
+                 (getf [me n] (get (c/deref-atomic-core?? me) n))
                  (setf [me n v]
-                       (swap! (:o me) assoc n v))
+                       (swap! (c/atomic-core?? me) assoc n v))
                  Closeable
                  (close [me]
                         (doseq [[_ c]
@@ -77,10 +78,12 @@
                 (unsub [me handler]
                        (when-some [c (get (.getf me :handlers) handler)]
                          (cas/close! c)
-                         (swap! (:o me) update-in [:handlers] dissoc handler)))
+                         (swap! (c/atomic-core?? me)
+                                update-in [:handlers] dissoc handler)))
                 (sub [me handler]
                      (let [c (cas/chan 4)]
-                       (swap! (:o me) update-in [:handlers] assoc handler c)
+                       (swap! (c/atomic-core?? me)
+                              update-in [:handlers] assoc handler c)
                        (cas/go-loop []
                                     (when-some [msg (cas/<! c)]
                                       (if (= (:type handler)
@@ -90,8 +93,8 @@
                                       (recur)))))
                 (pub-event [me msg]
                            (c/debug "pub msg = %s" (:code msg))
-                           (doseq [[_ c] (.getf me :handlers)]
-                             (cas/go (cas/>! c msg)))))
+                           (doseq [[_ c]
+                                   (.getf me :handlers)] (cas/go (cas/>! c msg)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn edispatcher<>

@@ -35,7 +35,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn- fmtStartBody
 
-  ""
+  "Collect all the player's session infos."
   [impl sessions]
 
   (c/preduce<map>
@@ -51,14 +51,14 @@
 (c/decl-object<> Arena
                  c/AtomicGS
                  (getf [me n]
-                       (get @(:o me) n))
+                       (get (c/deref-atomic-core?? me) n))
                  (setf [me n v]
-                       (swap! (:o me) assoc n v))
+                       (swap! (c/atomic-core?? me) assoc n v))
                  c/Sendable
                  (send [me msg]
                        (cond
                          (nc/is-private? msg)
-                         (some-> (:context msg) (c/send msg))
+                         (some-> (:session msg) (c/send msg))
                          (nc/is-public? msg)
                          (loki/broad-cast me msg)))
                  c/Receivable
@@ -82,10 +82,11 @@
                          (c/debug "activating room [%s]" (.id me))
                          (doseq [s sss]
                            (loki/sub disp (dp/esubr<> s)))
-                         (swap! (:o me) merge {:impl g
-                                               :latch conns
-                                               :starting? false
-                                               :opened? true :active? false})
+                         (swap! (c/atomic-core?? me)
+                                merge {:starting? false
+                                       :latch conns
+                                       :impl g
+                                       :opened? true :active? false})
                          (c/init g nil)
                          (nc/bcast! me loki/start (fmtStartBody g sss))))
                  Closeable
@@ -119,23 +120,30 @@
                                       (>= (loki/count-players me)
                                           (:minPlayers (.getf me :game)))))
                  (on-room-event [me evt]
-                                (let [{:keys [context body]} evt
-                                      {:keys [impl latch conns active?]} @(:o me)]
-                                  (assert (some? context))
+                                (let [{:keys [session body]} evt
+                                      _ (assert (some? session))
+                                      cid (c/id session)
+                                      {:keys [impl latch
+                                              conns active?]}
+                                      (c/deref-atomic-core?? me)]
                                   (cond
                                     (and (not active?)
                                          (nc/is-code? loki/replay evt))
                                     (locking me
                                       (when (and (not (.getf me :starting?))
                                                  (empty? (.getf me :latch)))
-                                        (swap! (:o me) merge {:latch conns :starting true})
+                                        (swap! (c/atomic-core?? me)
+                                               merge
+                                               {:latch conns :starting true})
                                         (c/restart me)))
                                     (and (not active?)
                                          (nc/is-code? loki/started evt))
-                                    (if (contains? latch (:id context))
+                                    (if (contains? latch cid)
                                       (locking me
-                                        (c/debug "latch: drop-off: %s" (:id context))
-                                        (.setf me :latch (dissoc (.getf me :latch) (:id context)))
+                                        (c/debug "latch: drop-off: %s" cid)
+                                        (.setf me
+                                               :latch
+                                               (dissoc (.getf me :latch) cid))
                                         (if (empty? (.getf me :latch))
                                           (c/start me (i/read-json body)))))
                                     (and active?
@@ -144,7 +152,8 @@
                                       (when (and (nc/is-quit? evt)
                                                  (= rc loki/tear-down))
                                         (nc/bcast! me
-                                                   loki/play-scrubbed {:pnum (:number @context)})
+                                                   loki/play-scrubbed
+                                                   {:pnum (c/getf session :number)})
                                         (u/pause 1000)
                                         (.close me)))))))
 

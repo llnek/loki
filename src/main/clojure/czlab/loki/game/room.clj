@@ -149,7 +149,7 @@
   [gameid roomid]
 
   (c/debug "%s: %s, game: %s"
-             "found a room(Free)" roomid gameid)
+           "found a room(Free)" roomid gameid)
   (swap! free-rooms update-in [gameid] dissoc roomid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -220,8 +220,9 @@
   [room session]
 
   (let [{:keys [player]} @session
-        {:keys [conns disp]} (deref (:o room))]
-    (swap! room assoc :conns (dissoc conns (:id session)))
+        {:keys [conns disp]} (c/deref-atomic-core?? room)]
+    (swap! (c/atomic-core?? room)
+           assoc :conns (dissoc conns (c/id session)))
     (ss/remove-session session)
     (loki/unsub-if-session disp session)))
 
@@ -253,8 +254,7 @@
                      (select-keys src [:pnum :puid]))
           (if (loki/can-open-room? room)
             (do
-              (c/debug "room has enough players, can open")
-              (c/debug "room.canOpen = true")
+              (c/debug "room has enough players, can open=true")
               (add-game-room room)
               (c/open room))
             (add-free-room room))))
@@ -289,8 +289,7 @@
           (c/debug "replying back to user: %s" (nc/pretty-event evt))
           (if (loki/can-open-room? room)
             (do
-              (c/debug "room has enough players, can open")
-              (c/debug "room.canOpen = true")
+              (c/debug "room has enough players, can open=true")
               (add-game-room room)
               (c/open room {}))
             (add-free-room room))

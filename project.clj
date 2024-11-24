@@ -22,6 +22,7 @@
              :uberjar {:aot :all}}
 
   :global-vars {*warn-on-reflection* true}
+  :preserve-eval-meta true
   :target-path "out/%s"
   :aot :all
 
@@ -31,6 +32,8 @@
   :java-source-paths ["src/main/java"]
   :source-paths ["src/main/clojure"]
   :test-paths ["src/test/clojure"]
+
+  :aliases { "bixby-run" ["trampoline" "run" "-m" "czlab.bixby.exec"] }
 
   :jvm-opts ["-Dlog4j.configurationFile=file:attic/log4j2.xml"]
   :javac-options ["-source" "16"

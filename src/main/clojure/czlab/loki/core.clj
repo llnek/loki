@@ -66,7 +66,7 @@
             (cc/getattr ch u/RMSN)]
         (if-not (and session room)
           (c/error "no session attached to socket")
-          (->> (assoc req :context session) (c/receive room)))))))
+          (->> (assoc req :session session) (c/receive room)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;EOF

@@ -50,12 +50,10 @@
 
   {:pre [(map? evt)]}
 
-  (let [{:keys [type code status]}
-        evt
+  (let [{:keys [type code status]} evt
         m {:type (loki/msg-types type)
            :code (loki/msg-codes code) }]
-    (prn-str (dissoc (merge evt m)
-                     :context :socket :session :source))))
+    (prn-str (dissoc (merge evt m) :session :socket :source))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn encode-event
@@ -65,7 +63,8 @@
   [{:keys [timestamp status
            type code body] :as evt}]
 
-  {:pre [(number? type)(number? code)]}
+  {:pre [(number? type)
+         (number? code)]}
 
   (let [msg {:type type
              :code code
@@ -114,17 +113,18 @@
    {:pre [(some? etype)
           (some? ecode)]}
 
-   (let [body (if (string? body) {:message body} body)
-         obj {:status loki/status-error
-              :timestamp (u/system-time)
-              :type etype
+   (let [body (if (string? body)
+                {:message body} body)
+         obj {:type etype
               :code ecode
-              :body (or body {})}]
+              :body (or body {})
+              :status loki/status-error
+              :timestamp (u/system-time)}]
      (cond
        (map? arg)
        (merge obj arg)
        (some? arg)
-       (assoc obj :context arg) :t obj))))
+       (assoc obj :session arg) :t obj))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn eventObj<>
@@ -143,16 +143,16 @@
           (some? ecode)
           (or (nil? body)
               (map? body))]}
-   (let [obj {:status loki/status-ok
-              :timestamp (u/system-time)
-              :type etype
+   (let [obj {:type etype
               :code ecode
-              :body (or body {})}]
+              :body (or body {})
+              :status loki/status-ok
+              :timestamp (u/system-time)}]
      (cond
        (map? arg)
        (merge obj arg)
        (some? arg)
-       (assoc obj :context arg) :else obj))))
+       (assoc obj :session arg) :else obj))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn private-event<>
@@ -262,7 +262,6 @@
 
   ""
   [disp msg]
-
   (c/debug "pub msg = %s" (:code msg))
   (doseq [[_ c] (:handlers @disp)] (cas/go (cas/>! c msg))))
 

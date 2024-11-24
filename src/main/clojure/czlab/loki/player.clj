@@ -56,7 +56,7 @@
   (locking userid-db
     (if (c/!in? @userid-db userid)
       (let [p (player<> userid passwd)
-            pid (:id p)]
+            pid (c/id?? p)]
         (swap! player-db assoc pid p)
         (swap! userid-db assoc userid pid))))
 

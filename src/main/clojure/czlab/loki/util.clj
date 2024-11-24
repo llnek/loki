@@ -60,6 +60,7 @@
 
   ([obj dt]
    (moveObject! obj dt true))
+
   ([{:keys [x y] :as obj} dt openGL?]
    (let [[dx dy] (dxdy obj dt)]
      (if openGL?

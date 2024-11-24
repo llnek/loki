@@ -12,6 +12,8 @@ Add the following dependency to your `project.clj` file:
 
 ## Documentation
 
+A websocket based framework handling network games.
+
 * [API Docs](https://llnek.github.io/loki/)
 
 ## Usage

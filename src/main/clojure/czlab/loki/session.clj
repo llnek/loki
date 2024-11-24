@@ -35,29 +35,35 @@
 (c/decl-object<> GameSession
                  c/AtomicGS
                  (getf [me n]
-                       (get @(:o me) n))
+                       (get (c/deref-atomic-core?? me) n))
                  (setf [me n v]
-                       (swap! (:o me) assoc n v))
+                       (swap! (c/atomic-core?? me) assoc n v))
                  c/Openable
                  (open [me options]
-                       (swap! (:o me) merge (merge {:status true}
-                                                   (select-keys options
-                                                                [:source :socket]))) me)
+                       (swap! (c/atomic-core?? me)
+                              merge (merge {:status true}
+                                           (select-keys options
+                                                        [:source :socket]))) me)
                  Closeable
                  (close [me]
                         (i/klose (.getf me :socket))
-                        (swap! (:o me) merge {:status false :socket nil}))
+                        (swap! (c/atomic-core?? me)
+                               merge {:status false :socket nil}))
                  c/Idable
                  (id [me] (.getf me :id))
                  c/Sendable
                  (send [me msg]
-                       (let [{:keys [socket shutting? status]} @(:o me)]
+                       (let [{:keys [socket
+                                     shutting? status]}
+                             (c/deref-atomic-core?? me)]
                          (if (and status
                                   (not shutting?))
                            (some-> socket
-                                   (cc/reply-result (cc/ws-msg<> {:socket socket
-                                                                  :is-text? true
-                                                                  :body (XData. (nc/encode-event msg))})))))))
+                                   (cc/reply-result
+                                     (cc/ws-msg<>
+                                       {:socket socket
+                                        :is-text? true
+                                        :body (XData. (nc/encode-event msg))})))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn session<>
@@ -66,7 +72,7 @@
   [room player settings]
 
   (let [sid (c/x->kw "sess#" (u/seqint2))
-        pid (:id player)
+        pid (c/id?? player)
         s (c/atomic<> GameSession (merge settings
                                          {:shutting? false
                                           :status false
@@ -74,11 +80,11 @@
                                           :socket nil
                                           :id sid
                                           :player player
-                                          :roomid (c/id?? @(c/atomic-core?? room))
-                                          :created (u/system-time)}))]
+                                          :created (u/system-time)
+                                          :roomid (c/id?? room)}))]
     (c/doto->> s
                (swap! sessions-db
-                      update-in [pid] assoc (c/id s)))))
+                      update-in [pid] assoc (c/id?? s)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn clear-sessions
@@ -95,7 +101,7 @@
   [player]
 
   (if player
-    (count (@sessions-db (:id player))) 0))
+    (count (@sessions-db (c/id?? player))) 0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn remove-session
@@ -106,8 +112,8 @@
   {:pre [(some? session)]}
 
   (c/do->nil
-    (if-some [p (:player @session)]
-      (swap! sessions-db update-in [(:id p)] dissoc (:id @session)))))
+    (if-some [p (c/getf session :player)]
+      (swap! sessions-db update-in [(c/id?? p)] dissoc (c/id?? session)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn add-session
@@ -117,8 +123,8 @@
 
   {:pre [(some? session)]}
 
-  (if-some [p (:player @(:o session))]
-    (swap! sessions-db update-in [(:id p)] assoc (:id @(:o session)) session))
+  (if-some [p (c/getf session :player)]
+    (swap! sessions-db update-in [(c/id?? p)] assoc (c/id?? session) session))
   session)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -130,7 +136,7 @@
   {:pre [(some? player)]}
 
   (c/do->nil
-    (if-some [pid (:id player)]
+    (if-some [pid (c/id?? player)]
       (let [m (@sessions-db pid)]
         (swap! sessions-db dissoc pid)
         (doseq [[_ c] m] (i/klose c))))))
