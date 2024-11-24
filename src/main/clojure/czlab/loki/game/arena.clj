@@ -99,9 +99,11 @@
                  c/Restartable
                  (restart [me]
                           (c/debug "arena [%s] restart() called" (.id me))
-                          (->> (-> (.getf me :impl)
-                                   (fmtStartBody (vals (.getf me :conns))))
-                               (nc/bcast! me loki/restart)))
+                          (nc/bcast! me
+                                     loki/restart
+                                     (fmtStartBody (.getf me :impl)
+                                                   (sort-by #(c/getf % :created)
+                                                            (vals (.getf me :conns))))))
                  c/Startable
                  (start [me arg]
                         (c/debug "arena [%s] start called" (.id me))
